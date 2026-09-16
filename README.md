@@ -38,15 +38,24 @@ This repository contains the complete production-grade source code for the offic
 SeaAndSeas_Website/
 ├── .gitignore              # Ignores OS metadata and deployment archives
 ├── README.md               # Project documentation
-├── index.html              # Main production landing page
+├── index.html              # Main production landing page (~48 KB)
 ├── SeaAndSeas_Website.html # Source HTML mirror
 ├── website.html            # Source HTML mirror
 ├── hero-ship.jpg           # High-resolution hero vessel photography
 ├── logo11.png              # Official corporate logo asset
 ├── IMFLogo.png             # International Maritime Federation membership emblem
 ├── maccia.jpg              # MACCIA accreditation emblem
-└── image/
-    └── logo11.png          # Asset directory for OpenGraph & Schema logo resolution
+├── css/
+│   └── style.css           # Modularized external stylesheet
+├── js/
+│   └── main.js             # Modularized interactive JavaScript
+└── image/                  # Static web images & membership assets
+    ├── logo11.png          # Corporate logo
+    ├── about-crew.jpg      # Crew on deck photography
+    ├── gallery-*.jpg       # International delegations & events
+    ├── lead-*.jpg          # Key leadership portraits
+    ├── maccia.jpg          # MACCIA accreditation badge
+    └── IMFLogo.png         # International Maritime Federation badge
 ```
 
 ---
@@ -88,7 +97,7 @@ This website is **100% compatible with shared hosting** on Plesk Obsidian withou
 ### Step 2: Upload Files
 1. Use the pre-built `deploy_seasshipping.zip` archive or zip the project files:
    ```bash
-   zip -r deploy_seasshipping.zip index.html hero-ship.jpg logo11.png IMFLogo.png maccia.jpg image/ -x "*.DS_Store*"
+   zip -r deploy_seasshipping.zip index.html css/ js/ image/ hero-ship.jpg logo11.png IMFLogo.png maccia.jpg -x "*.DS_Store*"
    ```
 2. In Plesk **File Manager**, enter `httpdocs/` and click **Upload**.
 3. Select `deploy_seasshipping.zip`, click **Extract Files**, and verify that `index.html` is placed directly in `httpdocs/`.
