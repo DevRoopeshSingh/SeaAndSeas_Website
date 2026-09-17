@@ -51,9 +51,9 @@ SeaAndSeas_Website/
 │   └── main.js             # Modularized interactive JavaScript
 └── image/                  # Static web images & membership assets
     ├── logo11.png          # Corporate logo
-    ├── about-crew.jpg      # Crew on deck photography
+    ├── crew-mobilization-bulk-carrier-2026.webp # Crew mobilization portrait
     ├── gallery-*.jpg       # International delegations & events
-    ├── lead-*.jpg          # Key leadership portraits
+    ├── capt-ujjawal-b-choudhary.png # Managing Director portrait
     ├── maccia.jpg          # MACCIA accreditation badge
     └── IMFLogo.png         # International Maritime Federation badge
 ```
@@ -114,9 +114,9 @@ This website is **100% compatible with shared hosting** on Plesk Obsidian withou
 * **India Headquarters**:
   * **Address**: 410, 4th Floor, Concorde Building, Plot No. 66A, Sector-11, C.B.D. Belapur, Navi Mumbai, Maharashtra 400614, India.
   * **Phone**: +91-22-49246060 / +91-22-49673720
-  * **Email**: `crewing@seasshipping.com` | `operations@seasshipping.com`
+  * **Email**: `crewing@seasshipping.com`
 * **UAE Operations**:
-  * **Address**: Port Area, Serving Ajman, Sharjah Khalid & Hamriyah Ports, United Arab Emirates.
+  * **Address**: Port Area, Serving Ajman, Sharjah, Sharjah Khalid Port & Hamriyah Ports, United Arab Emirates.
   * **Email**: `uae@seasshipping.com`
 
 ---
