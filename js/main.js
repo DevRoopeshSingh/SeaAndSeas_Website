@@ -22,17 +22,47 @@ document.addEventListener('DOMContentLoaded', () => {
       nav.classList.toggle('solid', window.scrollY > 40);
     }, {passive:true});
 
-    // Mobile nav toggle
+    // Mobile nav toggle & drawer
     const navToggle = document.getElementById('navToggle');
     const navLinks = document.getElementById('navLinks');
-    navToggle.addEventListener('click', () => {
-      const open = navLinks.classList.toggle('open');
-      navToggle.setAttribute('aria-expanded', open);
-    });
-    navLinks.querySelectorAll('a').forEach(a => a.addEventListener('click', () => {
+    const navScrim = document.getElementById('navScrim');
+
+    const closeNav = () => {
       navLinks.classList.remove('open');
-      navToggle.setAttribute('aria-expanded', false);
-    }));
+      navToggle.classList.remove('active');
+      navToggle.setAttribute('aria-expanded', 'false');
+      if (navScrim) navScrim.classList.remove('open');
+      document.body.style.overflow = '';
+    };
+
+    const openNav = () => {
+      navLinks.classList.add('open');
+      navToggle.classList.add('active');
+      navToggle.setAttribute('aria-expanded', 'true');
+      if (navScrim) navScrim.classList.add('open');
+      document.body.style.overflow = 'hidden';
+    };
+
+    navToggle.addEventListener('click', () => {
+      const isOpen = navLinks.classList.contains('open');
+      if (isOpen) {
+        closeNav();
+      } else {
+        openNav();
+      }
+    });
+
+    if (navScrim) {
+      navScrim.addEventListener('click', closeNav);
+    }
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && navLinks.classList.contains('open')) {
+        closeNav();
+      }
+    });
+
+    navLinks.querySelectorAll('a').forEach(a => a.addEventListener('click', closeNav));
 
     // Service accordion with keyboard accessibility
     document.querySelectorAll('.service-row').forEach(row => {
@@ -200,4 +230,38 @@ document.addEventListener('DOMContentLoaded', () => {
       e.stopPropagation();
       waCard.classList.remove('open');
     });
+
+    // Automatic Hero Background Slider
+    const heroSlides = document.querySelectorAll('.hero-slide');
+    if (heroSlides.length > 1) {
+      const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+      // Asynchronously preload upcoming slide images
+      heroSlides.forEach((slide, idx) => {
+        if (idx > 0 && slide.dataset.bg) {
+          const img = new Image();
+          img.src = slide.dataset.bg;
+          img.onload = () => {
+            slide.style.backgroundImage = `url('${slide.dataset.bg}')`;
+          };
+        }
+      });
+
+      if (!prefersReducedMotion) {
+        let currentSlide = 0;
+        const totalSlides = heroSlides.length;
+        const SLIDE_DURATION = 7000; // 7 seconds per slide
+
+        setInterval(() => {
+          if (document.hidden) return;
+          heroSlides[currentSlide].classList.remove('active');
+          currentSlide = (currentSlide + 1) % totalSlides;
+          const nextSlide = heroSlides[currentSlide];
+          if (nextSlide.dataset.bg && !nextSlide.style.backgroundImage) {
+            nextSlide.style.backgroundImage = `url('${nextSlide.dataset.bg}')`;
+          }
+          nextSlide.classList.add('active');
+        }, SLIDE_DURATION);
+      }
+    }
 });

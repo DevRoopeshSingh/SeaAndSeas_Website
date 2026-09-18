@@ -78,6 +78,9 @@
 }
 </script>
 
+<!-- Preload Hero Slide 1 for Fast LCP -->
+<link rel="preload" as="image" href="image/hero-slide-1.webp" type="image/webp">
+
 <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
@@ -126,11 +129,19 @@
     </button>
   </div>
 </header>
+<div class="nav-scrim" id="navScrim" aria-hidden="true"></div>
 
 <div id="top"></div>
 
 <!-- HERO -->
 <section class="hero">
+  <div class="hero-slider" aria-hidden="true">
+    <div class="hero-slide active" style="background-image: url('image/hero-slide-1.webp');"></div>
+    <div class="hero-slide" data-bg="image/hero-slide-2.webp"></div>
+    <div class="hero-slide" data-bg="image/hero-slide-3.webp"></div>
+    <div class="hero-slide" data-bg="image/hero-slide-4.webp"></div>
+    <div class="hero-overlay"></div>
+  </div>
   <div class="wrap">
     <div class="hero-copy">
       <span class="eyebrow">Navi Mumbai, India &amp; Ajman, UAE</span>
@@ -232,13 +243,13 @@
           <div class="office-box">
             <b>🇮🇳 Mumbai Head Office</b>
             410, 4th Floor, Concorde Building, Plot No. 66A, Sector-11, C.B.D. Belapur, Navi Mumbai – 400614, Maharashtra, India.<br>
-            <span style="color:var(--brand-royal);font-weight:600;">Tel: +91 22 49246060 / 49673720</span>
+            <span style="color:var(--brand-royal);font-weight:600;">Tel: <a href="tel:+912249246060" style="color:inherit;text-decoration:none;">+91 22 49246060</a> / <a href="tel:+912249673720" style="color:inherit;text-decoration:none;">49673720</a></span>
           </div>
           <div class="office-box">
             <b>🇦🇪 U.A.E. Port Agency Office</b>
             Ajman Port Zone, U.A.E.<br>
             Serving Emirates Port-Ajman, Sharjah, Sharjah Khalid Port &amp; Hamriyah Port.<br>
-            <span style="color:var(--brand-royal);font-weight:600;">Email: crewing@seasshipping.com</span>
+            <span style="color:var(--brand-royal);font-weight:600;">Email: <a href="mailto:crewing@seasshipping.com" style="color:inherit;text-decoration:none;">crewing@seasshipping.com</a></span>
           </div>
         </div>
       </div>
@@ -676,7 +687,7 @@
         <div class="lead-info">
           <div class="lead-name">Capt. Ujjawal B. Choudhary</div>
           <div class="lead-role">Managing Director</div>
-          <p class="lead-bio">A Master Mariner with extensive sea command experience across foreign-going bulk carriers, tankers, and container vessels. Capt. Choudhary spearheads corporate strategy, quality compliance, and international owner relations.<br><span class="mono" style="font-size:11.5px;color:var(--brand-blue);display:block;margin-top:6px;font-weight:600;">Mobile: +91 9820155400</span></p>
+          <p class="lead-bio">A Master Mariner with extensive sea command experience across foreign-going bulk carriers, tankers, and container vessels. Capt. Choudhary spearheads corporate strategy, quality compliance, and international owner relations.<br><a href="tel:+919820155400" class="mono" style="font-size:11.5px;color:var(--brand-blue);display:inline-flex;align-items:center;min-height:44px;margin-top:6px;font-weight:600;text-decoration:none;">Mobile: +91 9820155400</a></p>
         </div>
       </div>
     </div>
