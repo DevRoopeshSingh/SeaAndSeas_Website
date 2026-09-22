@@ -1,12 +1,12 @@
 <?php
 /**
  * Sea & Seas Shipping Private Limited
- * SMTP Mailer Diagnostic & Verification Tool
+ * SMTP Mailer Diagnostic & Verification Tool (Secured)
  *
  * Use this script to verify that your Plesk SMTP mailbox (website@seasshipping.com)
- * can authenticate and send outgoing emails to ohmeujjawal@gmail.com.
+ * can authenticate and send outgoing emails to the administrative address.
  *
- * URL: https://seasshipping.com/test-mail.php
+ * URL: https://seasshipping.com/test-mail.php?key=seas2026
  */
 
 declare(strict_types=1);
@@ -19,17 +19,101 @@ require_once __DIR__ . '/includes/mailer.php';
 use PHPMailer\PHPMailer\SMTP;
 use PHPMailer\PHPMailer\Exception;
 
-// 1. Gather Environment Configuration
+// 1. Gather Mailer Configuration
 $config = get_mailer_config();
-$toAddress = !empty($_GET['to']) ? filter_var($_GET['to'], FILTER_VALIDATE_EMAIL) : null;
-if (!$toAddress) {
-    $toAddress = $config['to_address'] ?: 'ohmeujjawal@gmail.com';
+
+// 2. Security Guard: Access Key Authorization
+// Prevents search crawlers and external bots from triggering mail tests or viewing logs
+$expectedKey = get_env_var('DIAGNOSTIC_KEY', 'seas2026');
+$providedKey = $_REQUEST['key'] ?? '';
+$isAuthorized = (PHP_SAPI === 'cli' || (!empty($providedKey) && hash_equals($expectedKey, (string)$providedKey)));
+
+// If not authorized in browser mode, display password/key gatekeeper
+if (!$isAuthorized && PHP_SAPI !== 'cli') {
+    http_response_code(403);
+    ?>
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>Authentication Required &bull; Sea &amp; Seas Mail Diagnostic</title>
+      <style>
+        body {
+          margin: 0; padding: 40px 16px; background-color: #0A192F; color: #e2e8f0;
+          font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+          display: flex; align-items: center; justify-content: center; min-height: 80vh;
+        }
+        .login-card {
+          background: #112240; border: 1px solid #233554; border-radius: 12px;
+          padding: 32px; max-width: 440px; width: 100%; box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+          text-align: center;
+        }
+        h2 { margin: 0 0 10px 0; font-size: 20px; color: #fff; }
+        p { color: #94a3b8; font-size: 14px; margin-bottom: 24px; }
+        input[type="password"], input[type="text"] {
+          width: 100%; box-sizing: border-box; padding: 12px 14px; border-radius: 6px;
+          border: 1px solid #233554; background: #020617; color: #fff; font-size: 15px; margin-bottom: 16px;
+        }
+        button {
+          width: 100%; padding: 12px; background: #0284c7; color: #fff; border: none;
+          border-radius: 6px; font-weight: 600; font-size: 15px; cursor: pointer;
+        }
+        button:hover { background: #0369a1; }
+        .error { color: #f87171; font-size: 13px; margin-bottom: 12px; }
+      </style>
+    </head>
+    <body>
+      <div class="login-card">
+        <h2>🔒 Diagnostic Access Guard</h2>
+        <p>Access key required to view SMTP status and execute mail relay tests.</p>
+        <?php if (!empty($providedKey)): ?>
+          <div class="error">Invalid access key. Please try again.</div>
+        <?php endif; ?>
+        <form method="GET" action="test-mail.php">
+          <input type="password" name="key" placeholder="Enter Access Key (default: seas2026)" autofocus required>
+          <button type="submit">Unlock Diagnostic Suite</button>
+        </form>
+      </div>
+    </body>
+    </html>
+    <?php
+    exit;
+}
+
+// 2b. Allow authorized admin to test alternative host, port, and encryption on the fly
+if (!empty($_REQUEST['mailer'])) {
+    $config['mailer'] = strtolower(trim($_REQUEST['mailer']));
+}
+if (!empty($_REQUEST['host'])) {
+    $config['host'] = trim($_REQUEST['host']);
+}
+if (!empty($_REQUEST['port'])) {
+    $config['port'] = (int) $_REQUEST['port'];
+}
+if (isset($_REQUEST['enc'])) {
+    $config['encryption'] = strtolower(trim($_REQUEST['enc']));
+}
+
+// 3. Security: Destination Recipient Enforcement (Prevent Open Relay)
+$defaultTo = $config['to_address'] ?: 'ohmeujjawal@gmail.com';
+$requestedTo = !empty($_REQUEST['to']) ? filter_var($_REQUEST['to'], FILTER_VALIDATE_EMAIL) : null;
+
+// Only allow sending to pre-configured to_address or seasshipping.com domain mailboxes
+if ($requestedTo && (str_ends_with(strtolower($requestedTo), '@seasshipping.com') || strtolower($requestedTo) === strtolower($defaultTo))) {
+    $toAddress = $requestedTo;
+} else {
+    $toAddress = $defaultTo;
 }
 
 $hasPassword = !empty($config['password']);
 $maskedPassword = $hasPassword ? str_repeat('•', min(strlen($config['password']), 16)) . ' (' . strlen($config['password']) . ' chars)' : '<span style="color:#ef4444;font-weight:bold;">[NOT SET - Empty in .env]</span>';
 
-// 2. Prepare SMTP Debug Log Collector
+// 4. Determine Action: Execute dispatch only on explicit send request
+$shouldSend = (isset($_REQUEST['action']) && $_REQUEST['action'] === 'send') ||
+              (isset($_REQUEST['send']) && $_REQUEST['send'] === '1') ||
+              (PHP_SAPI === 'cli' && in_array('--send', $argv ?? [], true));
+
 $debugLogs = [];
 $debugCollector = function (string $str, int $level) use (&$debugLogs): void {
     $cleanStr = trim($str);
@@ -42,88 +126,93 @@ $debugCollector = function (string $str, int $level) use (&$debugLogs): void {
     }
 };
 
-$testExecuted = true;
+$testExecuted = false;
 $testSuccess = false;
 $errorMessage = '';
 $executionTimeMs = 0;
 
-$startTime = microtime(true);
+if ($shouldSend) {
+    $testExecuted = true;
+    $startTime = microtime(true);
 
-if (!$hasPassword) {
-    $testSuccess = false;
-    $errorMessage = 'MAIL_PASSWORD is not configured. Please create a `.env` file in your website root (or configure PHP environment variables in Plesk) and set MAIL_PASSWORD to your mailbox password.';
-} else {
-    try {
-        // Instantiate SMTP Mailer with verbose debug output
-        $mail = create_smtp_mailer(true, $debugCollector);
-
-        $mail->addAddress($toAddress, 'Sea & Seas Mail Verification');
-        if (!empty($config['reply_to'])) {
-            $mail->addReplyTo($config['reply_to'], 'Sea & Seas Crewing Desk');
-        }
-
-        $mail->Subject = 'SMTP Verification Test: ' . $config['from_name'] . ' [' . date('Y-m-d H:i:s') . ']';
-
-        $mail->isHTML(true);
-        $mail->Body = '
-        <!DOCTYPE html>
-        <html>
-        <head>
-          <meta charset="UTF-8">
-          <style>
-            body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; color: #1e293b; background: #f8fafc; padding: 20px; }
-            .card { max-width: 580px; margin: 0 auto; background: #ffffff; border-radius: 8px; border: 1px solid #e2e8f0; padding: 24px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); }
-            .header { border-bottom: 2px solid #0284c7; padding-bottom: 12px; margin-bottom: 16px; }
-            .success-badge { display: inline-block; background: #dcfce7; color: #15803d; padding: 4px 10px; border-radius: 4px; font-weight: bold; font-size: 13px; }
-            table { width: 100%; border-collapse: collapse; margin-top: 14px; font-size: 13px; }
-            th { text-align: left; padding: 8px 10px; background: #f1f5f9; color: #475569; border-bottom: 1px solid #e2e8f0; }
-            td { padding: 8px 10px; border-bottom: 1px solid #e2e8f0; color: #0f172a; }
-          </style>
-        </head>
-        <body>
-          <div class="card">
-            <div class="header">
-              <h2 style="margin:0 0 4px 0; color:#0A192F;">Sea &amp; Seas Shipping Mail Gateway</h2>
-              <div class="success-badge">✓ SMTP Relay Test Passed</div>
-            </div>
-            <p>This is a verification email confirming that authenticated SMTP email dispatch from <strong>' . htmlspecialchars($config['from_address']) . '</strong> to <strong>' . htmlspecialchars($toAddress) . '</strong> is functioning normally.</p>
-            <table>
-              <tr><th>SMTP Host</th><td>' . htmlspecialchars($config['host']) . '</td></tr>
-              <tr><th>Port &amp; Security</th><td>' . htmlspecialchars((string)$config['port']) . ' (' . strtoupper(htmlspecialchars($config['encryption'])) . ')</td></tr>
-              <tr><th>Authenticated User</th><td>' . htmlspecialchars($config['username']) . '</td></tr>
-              <tr><th>Sent At</th><td>' . date('r') . '</td></tr>
-              <tr><th>Server IP / Host</th><td>' . htmlspecialchars($_SERVER['SERVER_NAME'] ?? 'localhost') . ' (' . htmlspecialchars($_SERVER['SERVER_ADDR'] ?? '127.0.0.1') . ')</td></tr>
-            </table>
-            <p style="font-size:12px;color:#64748b;margin-top:20px;">Automated test generated by <code>test-mail.php</code>.</p>
-          </div>
-        </body>
-        </html>';
-
-        $mail->AltBody = "Sea & Seas Shipping SMTP Test\r\n" .
-                         "=============================\r\n" .
-                         "Status: SUCCESS\r\n" .
-                         "From: {$config['from_address']} ({$config['from_name']})\r\n" .
-                         "To: {$toAddress}\r\n" .
-                         "SMTP Host: {$config['host']}:{$config['port']} (" . strtoupper($config['encryption']) . ")\r\n" .
-                         "Time: " . date('r') . "\r\n";
-
-        $mail->send();
-        $testSuccess = true;
-
-    } catch (\Throwable $e) {
+    $isMailDriver = (strtolower((string)($config['mailer'] ?? '')) === 'mail' || strtolower((string)$config['host']) === 'mail');
+    if (!$hasPassword && !$isMailDriver) {
         $testSuccess = false;
-        $errorMessage = $e->getMessage();
+        $errorMessage = 'MAIL_PASSWORD is not configured. Please create a `.env` file in your website root (or configure PHP environment variables in Plesk) and set MAIL_PASSWORD to your mailbox password.';
+    } else {
+        try {
+            $mail = create_smtp_mailer(true, $debugCollector, $config);
+
+            $mail->addAddress($toAddress, 'Sea & Seas Mail Verification');
+            if (!empty($config['reply_to'])) {
+                $mail->addReplyTo($config['reply_to'], 'Sea & Seas Crewing Desk');
+            }
+
+            $mail->Subject = 'SMTP Verification Test: ' . $config['from_name'] . ' [' . date('Y-m-d H:i:s') . ']';
+
+            $mail->isHTML(true);
+            $mail->Body = '
+            <!DOCTYPE html>
+            <html>
+            <head>
+              <meta charset="UTF-8">
+              <style>
+                body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; color: #1e293b; background: #f8fafc; padding: 20px; }
+                .card { max-width: 580px; margin: 0 auto; background: #ffffff; border-radius: 8px; border: 1px solid #e2e8f0; padding: 24px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); }
+                .header { border-bottom: 2px solid #0284c7; padding-bottom: 12px; margin-bottom: 16px; }
+                .success-badge { display: inline-block; background: #dcfce7; color: #15803d; padding: 4px 10px; border-radius: 4px; font-weight: bold; font-size: 13px; }
+                table { width: 100%; border-collapse: collapse; margin-top: 14px; font-size: 13px; }
+                th { text-align: left; padding: 8px 10px; background: #f1f5f9; color: #475569; border-bottom: 1px solid #e2e8f0; }
+                td { padding: 8px 10px; border-bottom: 1px solid #e2e8f0; color: #0f172a; }
+              </style>
+            </head>
+            <body>
+              <div class="card">
+                <div class="header">
+                  <h2 style="margin:0 0 4px 0; color:#0A192F;">Sea &amp; Seas Shipping Mail Gateway</h2>
+                  <div class="success-badge">✓ SMTP Relay Test Passed</div>
+                </div>
+                <p>This is a verification email confirming that authenticated SMTP email dispatch from <strong>' . htmlspecialchars($config['from_address']) . '</strong> to <strong>' . htmlspecialchars($toAddress) . '</strong> is functioning normally.</p>
+                <table>
+                  <tr><th>SMTP Host</th><td>' . htmlspecialchars($config['host']) . '</td></tr>
+                  <tr><th>Port &amp; Security</th><td>' . htmlspecialchars((string)$config['port']) . ' (' . strtoupper(htmlspecialchars($config['encryption'])) . ')</td></tr>
+                  <tr><th>Authenticated User</th><td>' . htmlspecialchars($config['username']) . '</td></tr>
+                  <tr><th>Sent At</th><td>' . date('r') . '</td></tr>
+                  <tr><th>Server Host</th><td>' . htmlspecialchars($_SERVER['SERVER_NAME'] ?? 'localhost') . '</td></tr>
+                </table>
+                <p style="font-size:12px;color:#64748b;margin-top:20px;">Automated test generated by <code>test-mail.php</code>.</p>
+              </div>
+            </body>
+            </html>';
+
+            $mail->AltBody = "Sea & Seas Shipping SMTP Test\r\n" .
+                             "=============================\r\n" .
+                             "Status: SUCCESS\r\n" .
+                             "From: {$config['from_address']} ({$config['from_name']})\r\n" .
+                             "To: {$toAddress}\r\n" .
+                             "SMTP Host: {$config['host']}:{$config['port']} (" . strtoupper($config['encryption']) . ")\r\n" .
+                             "Time: " . date('r') . "\r\n";
+
+            $mail->send();
+            $testSuccess = true;
+
+        } catch (\Throwable $e) {
+            $testSuccess = false;
+            $errorMessage = $e->getMessage();
+        }
     }
+
+    $executionTimeMs = round((microtime(true) - $startTime) * 1000, 2);
 }
 
-$executionTimeMs = round((microtime(true) - $startTime) * 1000, 2);
-
-// 3. CLI / JSON Output Mode
+// 5. CLI / JSON Output Mode
 $isJson = (isset($_GET['format']) && $_GET['format'] === 'json') || (PHP_SAPI === 'cli' && in_array('--json', $argv ?? [], true));
 
 if ($isJson) {
     header('Content-Type: application/json; charset=UTF-8');
     echo json_encode([
+        'authorized'      => $isAuthorized,
+        'executed'        => $testExecuted,
         'success'         => $testSuccess,
         'executionTimeMs' => $executionTimeMs,
         'error'           => $errorMessage ?: null,
@@ -143,7 +232,7 @@ if ($isJson) {
     exit;
 }
 
-// 4. Standalone CLI text output
+// 6. CLI Output
 if (PHP_SAPI === 'cli') {
     echo "========================================================\n";
     echo " Sea & Seas Shipping - SMTP Verification Tool\n";
@@ -154,17 +243,20 @@ if (PHP_SAPI === 'cli') {
     echo "To  : {$toAddress}\n";
     echo "Pass: " . ($hasPassword ? '[SET]' : '[NOT SET]') . "\n";
     echo "--------------------------------------------------------\n";
-    if ($testSuccess) {
-        echo "RESULT: SUCCESS! Email sent in {$executionTimeMs}ms\n";
+    if ($shouldSend) {
+        if ($testSuccess) {
+            echo "RESULT: SUCCESS! Email sent in {$executionTimeMs}ms\n";
+        } else {
+            echo "RESULT: FAILED!\nError: {$errorMessage}\n";
+        }
     } else {
-        echo "RESULT: FAILED!\n";
-        echo "Error: {$errorMessage}\n";
+        echo "Ready. Re-run with --send flag to trigger email test.\n";
     }
     echo "========================================================\n";
-    exit($testSuccess ? 0 : 1);
+    exit($testSuccess || !$shouldSend ? 0 : 1);
 }
 
-// 5. Rich HTML Browser Diagnostic View
+// 7. Rich HTML Diagnostic View
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -188,7 +280,7 @@ if (PHP_SAPI === 'cli') {
     body {
       margin: 0;
       padding: 32px 16px;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
       background-color: var(--bg);
       color: var(--text);
       line-height: 1.6;
@@ -238,6 +330,11 @@ if (PHP_SAPI === 'cli') {
       background: rgba(239, 68, 68, 0.12);
       border: 1px solid rgba(239, 68, 68, 0.4);
       color: #fca5a5;
+    }
+    .status-banner.info {
+      background: rgba(2, 132, 199, 0.12);
+      border: 1px solid rgba(2, 132, 199, 0.4);
+      color: #7dd3fc;
     }
     .status-icon {
       font-size: 24px;
@@ -313,7 +410,7 @@ if (PHP_SAPI === 'cli') {
       display: flex;
       gap: 12px;
       flex-wrap: wrap;
-      margin-top: 16px;
+      margin-top: 18px;
     }
     .tip-box {
       background: rgba(2, 132, 199, 0.08);
@@ -334,20 +431,30 @@ if (PHP_SAPI === 'cli') {
     </div>
 
     <!-- Status Banner -->
-    <?php if ($testSuccess): ?>
-      <div class="status-banner success">
-        <div class="status-icon">✓</div>
-        <div>
-          <strong style="font-size:16px;">SUCCESS: SMTP Verification Email Dispatched!</strong><br>
-          An authenticated test message was successfully accepted by <code><?= htmlspecialchars($config['host']) ?></code> and dispatched to <code><?= htmlspecialchars($toAddress) ?></code> in <strong><?= $executionTimeMs ?>ms</strong>.
+    <?php if ($testExecuted): ?>
+      <?php if ($testSuccess): ?>
+        <div class="status-banner success">
+          <div class="status-icon">✓</div>
+          <div>
+            <strong style="font-size:16px;">SUCCESS: SMTP Verification Email Dispatched!</strong><br>
+            An authenticated test message was successfully accepted by <code><?= htmlspecialchars($config['host']) ?></code> and dispatched to <code><?= htmlspecialchars($toAddress) ?></code> in <strong><?= $executionTimeMs ?>ms</strong>.
+          </div>
         </div>
-      </div>
+      <?php else: ?>
+        <div class="status-banner danger">
+          <div class="status-icon">⚠️</div>
+          <div>
+            <strong style="font-size:16px;">SMTP DISPATCH FAILED</strong><br>
+            <?= htmlspecialchars($errorMessage) ?>
+          </div>
+        </div>
+      <?php endif; ?>
     <?php else: ?>
-      <div class="status-banner danger">
-        <div class="status-icon">⚠️</div>
+      <div class="status-banner info">
+        <div class="status-icon">ℹ️</div>
         <div>
-          <strong style="font-size:16px;">SMTP DISPATCH FAILED</strong><br>
-          <?= htmlspecialchars($errorMessage) ?>
+          <strong style="font-size:16px;">Gateway Diagnostic Loaded</strong><br>
+          SMTP credentials and host configuration loaded from <code>.env</code>. Click <strong>"Send Test Verification Email"</strong> below to test live transmission.
         </div>
       </div>
     <?php endif; ?>
@@ -381,7 +488,7 @@ if (PHP_SAPI === 'cli') {
           <div class="config-value"><?= htmlspecialchars($config['from_name']) ?> &lt;<?= htmlspecialchars($config['from_address']) ?>&gt;</div>
         </div>
         <div class="config-item">
-          <div class="config-label">Destination (FORM_SUBMISSION_TO)</div>
+          <div class="config-label">Test Recipient (FORM_SUBMISSION_TO)</div>
           <div class="config-value"><?= htmlspecialchars($toAddress) ?></div>
         </div>
       </div>
@@ -394,33 +501,47 @@ if (PHP_SAPI === 'cli') {
         </div>
       <?php endif; ?>
 
-      <div class="btn-group">
-        <a href="test-mail.php" class="btn">🔄 Re-run SMTP Test</a>
-        <a href="test-mail.php?format=json" class="btn btn-secondary" target="_blank">📄 View JSON Response</a>
+      <form method="POST" action="test-mail.php?key=<?= urlencode($providedKey) ?>" class="btn-group">
+        <input type="hidden" name="action" value="send">
+        <input type="hidden" name="key" value="<?= htmlspecialchars($providedKey) ?>">
+        <button type="submit" class="btn">🚀 Send Test Verification Email</button>
+        <a href="test-mail.php?key=<?= urlencode($providedKey) ?>&format=json" class="btn btn-secondary" target="_blank">📄 View JSON Response</a>
         <a href="index.html#careers" class="btn btn-secondary">← Back to Careers Form</a>
+      </form>
+
+      <div style="margin-top:22px;padding-top:16px;border-top:1px solid var(--border);">
+        <div style="font-size:12px;font-weight:700;text-transform:uppercase;color:var(--muted);margin-bottom:10px;">Quick Test Server &amp; Driver Presets:</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <a href="test-mail.php?key=<?= urlencode($providedKey) ?>&send=1&host=mail.accu20.com&port=587&enc=tls" class="btn" style="background:#0284c7;font-size:12px;padding:7px 14px;">🚀 mail.accu20.com : 587 (TLS)</a>
+          <a href="test-mail.php?key=<?= urlencode($providedKey) ?>&send=1&host=mail.accu20.com&port=465&enc=ssl" class="btn btn-secondary" style="font-size:12px;padding:7px 12px;">⚡ mail.accu20.com : 465 (SSL)</a>
+          <a href="test-mail.php?key=<?= urlencode($providedKey) ?>&send=1&host=mail.accu20.com&port=25&enc=none" class="btn btn-secondary" style="font-size:12px;padding:7px 12px;">⚡ mail.accu20.com : 25</a>
+          <a href="test-mail.php?key=<?= urlencode($providedKey) ?>&send=1&mailer=mail" class="btn btn-secondary" style="font-size:12px;padding:7px 12px;">✉️ Native mail()</a>
+        </div>
       </div>
     </div>
 
-    <!-- SMTP Handshake Log -->
-    <div class="card">
-      <h3 style="margin: 0 0 12px 0; font-size: 16px; color: #ffffff;">SMTP Connection &amp; Handshake Trace</h3>
-      <?php if (empty($debugLogs)): ?>
-        <p style="color: var(--muted); font-size: 13px; margin: 0;">No handshake logs recorded (authentication was halted before socket connection).</p>
-      <?php else: ?>
-        <div class="log-box">
-          <?php foreach ($debugLogs as $log): ?>
-            <?php
-              $msg = $log['message'];
-              $cls = 'log-line';
-              if (str_starts_with($msg, 'SERVER -> CLIENT:')) $cls .= ' smtp-in';
-              elseif (str_starts_with($msg, 'CLIENT -> SERVER:')) $cls .= ' smtp-out';
-              elseif (stripos($msg, 'error') !== false || stripos($msg, 'failed') !== false) $cls .= ' smtp-err';
-            ?>
-            <div class="<?= $cls ?>"><?= htmlspecialchars($msg) ?></div>
-          <?php endforeach; ?>
-        </div>
-      <?php endif; ?>
-    </div>
+    <!-- SMTP Handshake Log (only shown when send was attempted) -->
+    <?php if ($testExecuted): ?>
+      <div class="card">
+        <h3 style="margin: 0 0 12px 0; font-size: 16px; color: #ffffff;">SMTP Connection &amp; Handshake Trace</h3>
+        <?php if (empty($debugLogs)): ?>
+          <p style="color: var(--muted); font-size: 13px; margin: 0;">No handshake logs recorded (authentication was halted before socket connection).</p>
+        <?php else: ?>
+          <div class="log-box">
+            <?php foreach ($debugLogs as $log): ?>
+              <?php
+                $msg = $log['message'];
+                $cls = 'log-line';
+                if (str_starts_with($msg, 'SERVER -> CLIENT:')) $cls .= ' smtp-in';
+                elseif (str_starts_with($msg, 'CLIENT -> SERVER:')) $cls .= ' smtp-out';
+                elseif (stripos($msg, 'error') !== false || stripos($msg, 'failed') !== false) $cls .= ' smtp-err';
+              ?>
+              <div class="<?= $cls ?>"><?= htmlspecialchars($msg) ?></div>
+            <?php endforeach; ?>
+          </div>
+        <?php endif; ?>
+      </div>
+    <?php endif; ?>
   </div>
 </body>
 </html>

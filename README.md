@@ -86,26 +86,35 @@ Right-click on `index.html` and choose **Open with Live Server**.
 
 ## 🌐 Deployment Guide (Plesk Obsidian)
 
-This website is **100% compatible with shared hosting** on Plesk Obsidian without needing Node.js or database daemons.
+This website is **100% compatible with shared hosting** on Plesk Obsidian (PHP 8.2+ / Apache & Nginx) without needing Node.js or external database daemons.
 
 ### Step 1: Create Backup of Current Live Site
-1. Log in to your **Plesk Obsidian** panel.
+1. Log in to your **Plesk Obsidian** panel (`seasshipping.com`).
 2. Go to **Websites & Domains** > `seasshipping.com` > **File Manager**.
 3. Inside `httpdocs/`, select all existing files and click **Add to Archive** (e.g. `backup_live_seasshipping.zip`).
 4. Download the backup `.zip` to your local storage for safekeeping.
 
 ### Step 2: Upload Files
-1. Use the pre-built `deploy_seasshipping.zip` archive or zip the project files:
+1. Use the pre-built, verified deployment archive `deploy_seasshipping_production.zip`:
    ```bash
-   zip -r deploy_seasshipping.zip index.html css/ js/ image/ hero-ship.jpg logo11.png IMFLogo.png maccia.jpg -x "*.DS_Store*"
+   # Generates clean bundle with all assets, backend PHP mailer, and secure configs:
+   zip -r deploy_seasshipping_production.zip index.html css/ js/ image/ hero-ship.jpg logo11.png IMFLogo.png maccia.jpg includes/ phpmailer/ submit_application.php test-mail.php uploads/ .htaccess web.config .env .env.example -x "*.DS_Store*" -x "*__MACOSX*"
    ```
-2. In Plesk **File Manager**, enter `httpdocs/` and click **Upload**.
-3. Select `deploy_seasshipping.zip`, click **Extract Files**, and verify that `index.html` is placed directly in `httpdocs/`.
+2. In Plesk **File Manager**, navigate to `httpdocs/` and click **Upload**.
+3. Select `deploy_seasshipping_production.zip`, click **Extract Files**, and verify that `index.html` is placed directly in `httpdocs/`.
 
-### Step 3: Server Configuration
+### Step 3: Verify Environment & SMTP Dispatch
+1. Open the secure diagnostic suite in your browser:
+   `https://seasshipping.com/test-mail.php?key=seas2026`
+2. Verify that **SMTP Host**, **Port**, **Username**, and **Password Status** are correctly loaded.
+3. Click **"🚀 Send Test Verification Email"** to verify live transmission to `ohmeujjawal@gmail.com`.
+4. (Optional) Once verified, you may delete `test-mail.php` from `httpdocs/` or leave the access key protection active.
+
+### Step 4: Server Optimization & SSL Settings
 * **Default Document**: Ensure `index.html` is at the top of the **Index Files / Default Documents** list in Plesk.
-* **Gzip Compression**: Ensure Gzip/Brotli compression is enabled under **Apache & nginx Settings** for maximum delivery speed.
-* **SSL / HTTPS**: In **Hosting Settings**, check **Permanent SEO-safe 301 redirect from HTTP to HTTPS** with your active Let's Encrypt SSL certificate.
+* **PHP Version**: Verify PHP 8.2 or 8.3 is selected for the domain under **PHP Settings**.
+* **Gzip & Caching**: Handled automatically via `.htaccess` (or enable Gzip under **Apache & nginx Settings**).
+* **SSL / HTTPS**: In **Hosting Settings**, enable **Permanent SEO-safe 301 redirect from HTTP to HTTPS** with your active Let's Encrypt SSL certificate.
 
 ---
 

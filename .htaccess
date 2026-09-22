@@ -7,8 +7,14 @@ Options -Indexes
 # UTF-8 Encoding
 AddDefaultCharset UTF-8
 
+# Block direct HTTP access to internal script and library directories
+<IfModule mod_rewrite.c>
+RewriteEngine On
+RewriteRule ^(includes|phpmailer)(/.*)?$ - [F,L]
+</IfModule>
+
 # Block access to sensitive data and config files
-<FilesMatch "^(applications_roster\.json|package\.json|server\.js|\.git|\.env|\.DS_Store|.*\.log|.*\.zip)$">
+<FilesMatch "(^|/)(\.env.*|applications_roster\.json|package\.json|server\.js|\.git.*|\.DS_Store|.*\.log|.*\.zip)$">
     <IfModule mod_authz_core.c>
         Require all denied
     </IfModule>

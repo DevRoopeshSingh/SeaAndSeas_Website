@@ -101,9 +101,10 @@ function get_mailer_config(): array {
     load_env_file();
 
     return [
-        'host'         => get_env_var('MAIL_HOST', 'cp1.accu20.com'),
-        'port'         => (int) (get_env_var('MAIL_PORT', '465') ?: 465),
-        'encryption'   => strtolower(get_env_var('MAIL_ENCRYPTION', 'ssl') ?: 'ssl'),
+        'mailer'       => strtolower(get_env_var('MAIL_MAILER', 'smtp') ?: 'smtp'),
+        'host'         => get_env_var('MAIL_HOST', 'mail.accu20.com'),
+        'port'         => (int) (get_env_var('MAIL_PORT', '587') ?: 587),
+        'encryption'   => strtolower(get_env_var('MAIL_ENCRYPTION', 'tls') ?: 'tls'),
         'username'     => get_env_var('MAIL_USERNAME', 'website@seasshipping.com'),
         'password'     => get_env_var('MAIL_PASSWORD', ''),
         'from_address' => get_env_var('MAIL_FROM_ADDRESS', 'website@seasshipping.com'),
@@ -121,33 +122,44 @@ function get_mailer_config(): array {
  * @return PHPMailer
  * @throws Exception
  */
-function create_smtp_mailer(bool $debug = false, ?callable $debugOutput = null): PHPMailer {
-    $config = get_mailer_config();
+function create_smtp_mailer(bool $debug = false, ?callable $debugOutput = null, ?array $overrideConfig = null): PHPMailer {
+    $config = $overrideConfig ?: get_mailer_config();
 
     $mail = new PHPMailer(true);
 
-    // Server settings
-    $mail->isSMTP();
-    $mail->Host       = (string) $config['host'];
-    $mail->SMTPAuth   = true;
-    $mail->Username   = (string) $config['username'];
-    $mail->Password   = (string) $config['password'];
-    $mail->CharSet    = 'UTF-8';
-    $mail->Timeout    = 25; // 25-second connection timeout
-
-    // Protocol encryption
-    $enc = strtolower((string) $config['encryption']);
-    $port = (int) $config['port'];
-
-    if ($enc === 'ssl' || $port === 465) {
-        $mail->SMTPSecure = PHPMailer::ENCRYPTION_SMTPS;
-    } elseif ($enc === 'tls' || $port === 587) {
-        $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
+    // Check if configured to use PHP native mail()
+    $mailerType = strtolower((string)($config['mailer'] ?? get_env_var('MAIL_MAILER', 'smtp')));
+    if ($mailerType === 'mail' || strtolower((string)$config['host']) === 'mail') {
+        $mail->isMail();
+        $mail->UseSendmailOptions = false;
+        $mail->Sender = '';
+        if (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN') {
+            @ini_set('sendmail_from', (string)$config['from_address']);
+        }
     } else {
-        $mail->SMTPSecure = '';
-        $mail->SMTPAutoTLS = false;
+        // Server settings
+        $mail->isSMTP();
+        $mail->Host       = (string) $config['host'];
+        $mail->SMTPAuth   = true;
+        $mail->Username   = (string) $config['username'];
+        $mail->Password   = (string) $config['password'];
+        $mail->CharSet    = 'UTF-8';
+        $mail->Timeout    = 25; // 25-second connection timeout
+
+        // Protocol encryption
+        $enc = strtolower((string) $config['encryption']);
+        $port = (int) $config['port'];
+
+        if ($enc === 'ssl' || $port === 465) {
+            $mail->SMTPSecure = PHPMailer::ENCRYPTION_SMTPS;
+        } elseif ($enc === 'tls' || $port === 587) {
+            $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
+        } else {
+            $mail->SMTPSecure = '';
+            $mail->SMTPAutoTLS = false;
+        }
+        $mail->Port = $port;
     }
-    $mail->Port = $port;
 
     // Resilient SSL stream options for shared hosting environments
     $mail->SMTPOptions = [

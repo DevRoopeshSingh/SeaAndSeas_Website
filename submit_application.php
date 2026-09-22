@@ -401,9 +401,26 @@ try {
     $mailSent = true;
 
 } catch (\Throwable $e) {
-    $mailSent = false;
     $mailError = $e->getMessage();
     error_log("[Sea & Seas Careers] SMTP Delivery Error for {$refNumber}: " . $mailError);
+
+    // Resilient Fallback: If SMTP socket is refused (e.g. error 10061), fallback to server native PHP mail()
+    try {
+        error_log("[Sea & Seas Careers] Attempting native mail() fallback for {$refNumber}...");
+        $mail->isMail();
+        $mail->UseSendmailOptions = false;
+        $mail->Sender = '';
+        if (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN') {
+            @ini_set('sendmail_from', (string)$mailerConfig['from_address']);
+        }
+        $mail->send();
+        $mailSent = true;
+        error_log("[Sea & Seas Careers] Successfully dispatched {$refNumber} via native PHP mail() fallback.");
+    } catch (\Throwable $e2) {
+        $mailSent = false;
+        $mailError .= ' | Fallback mail(): ' . $e2->getMessage();
+        error_log("[Sea & Seas Careers] Native mail() fallback failed for {$refNumber}: " . $e2->getMessage());
+    }
 }
 
 if (!$mailSent) {
