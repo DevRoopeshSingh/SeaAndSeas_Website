@@ -350,8 +350,13 @@ $emailMessage .= "Content-Transfer-Encoding: base64\r\n\r\n";
 $emailMessage .= $encodedAttachment . "\r\n\r\n";
 $emailMessage .= "--{$mimeBoundary}--";
 
-// Use envelope sender (-f) matching the domain mailbox for SPF/DKIM compliance
-$mailSent = @mail($crewingMailbox, $subject, $emailMessage, $headers, "-f{$fromMailbox}");
+// Cross-Platform Envelope Sender (Windows IIS uses sendmail_from; Linux uses -f)
+if (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN') {
+    @ini_set('sendmail_from', $fromMailbox);
+    $mailSent = @mail($crewingMailbox, $subject, $emailMessage, $headers);
+} else {
+    $mailSent = @mail($crewingMailbox, $subject, $emailMessage, $headers, "-f{$fromMailbox}");
+}
 
 if (!$mailSent) {
     error_log("[Sea & Seas Careers] mail() failed to send {$refNumber} to {$crewingMailbox}");
