@@ -13,6 +13,9 @@ header('Content-Type: application/json; charset=UTF-8');
 header('X-Content-Type-Options: nosniff');
 header('X-Frame-Options: SAMEORIGIN');
 
+// Load SMTP Mailer helper & PHPMailer
+require_once __DIR__ . '/includes/mailer.php';
+
 // Buffer all output to guarantee clean JSON even if warnings occur
 ob_start();
 
@@ -272,100 +275,145 @@ if (file_exists($rosterFile)) {
 array_unshift($roster, $record);
 @file_put_contents($rosterFile, json_encode(array_slice($roster, 0, 100), JSON_PRETTY_PRINT));
 
-// 8. Dispatch Email to Crewing Desk via Plesk Native mail()
-$crewingMailbox = 'crewing@seasshipping.com';
-$fromMailbox    = 'crewing@seasshipping.com'; // Verified domain mailbox on seasshipping.com
+// 8. Dispatch Email via Authenticated SMTP (PHPMailer)
+$mailSent = false;
+$mailError = '';
 
-if (!function_exists('mail')) {
-    error_log("[Sea & Seas Careers] PHP mail() function is disabled on this server.");
-    http_response_code(500);
-    echo json_encode([
-        'success'   => false,
-        'refNumber' => $refNumber,
-        'error'     => 'Server mail service is currently unavailable. Please send your CV directly to crewing@seasshipping.com.',
-        'code'      => 'MAIL_DISABLED'
-    ]);
-    exit;
-}
+try {
+    $mail = create_smtp_mailer();
+    $mailerConfig = get_mailer_config();
 
-// Read attachment content
-$fileContent = @file_get_contents($destination);
-if ($fileContent === false) {
-    error_log("[Sea & Seas Careers] Unable to read stored file at {$destination}");
-    http_response_code(500);
-    echo json_encode([
-        'success'   => false,
-        'refNumber' => $refNumber,
-        'error'     => 'Unable to read stored CV for email delivery. Please contact crewing@seasshipping.com.'
-    ]);
-    exit;
-}
+    // Primary Recipient: Destination for form submissions
+    $destinationRecipient = !empty($mailerConfig['to_address']) ? $mailerConfig['to_address'] : 'ohmeujjawal@gmail.com';
+    $mail->addAddress($destinationRecipient, 'Sea & Seas Operations Desk');
 
-$encodedAttachment = chunk_split(base64_encode($fileContent));
-$mimeBoundary = '==Multipart_Boundary_x' . md5(time()) . 'x';
+    // Reply-To: Candidate Email & Crewing Desk
+    $mail->addReplyTo($email, $fullName);
+    if (!empty($mailerConfig['reply_to']) && strcasecmp($mailerConfig['reply_to'], $email) !== 0) {
+        $mail->addReplyTo($mailerConfig['reply_to'], 'Sea & Seas Crewing Desk');
+    }
 
-$subject = "[Seafarer Application] {$rank} - {$fullName} ({$refNumber})";
+    // Email Subject
+    $mail->Subject = "[Seafarer Application] {$rank} - {$fullName} ({$refNumber})";
 
-// Safe Headers: Verified Domain From, Candidate Reply-To
-$headers  = "From: Sea & Seas Shipping <{$fromMailbox}>\r\n";
-$headers .= "Reply-To: {$fullName} <{$email}>\r\n";
-$headers .= "MIME-Version: 1.0\r\n";
-$headers .= "Content-Type: multipart/mixed; boundary=\"{$mimeBoundary}\"\r\n";
-$headers .= "X-Mailer: SeaAndSeas/2.0 PHP/" . phpversion() . "\r\n";
+    // Build Responsive HTML Email Body
+    $htmlBody = '
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+      <meta charset="UTF-8">
+      <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; line-height: 1.6; color: #1e293b; background-color: #f8fafc; margin: 0; padding: 24px; }
+        .container { max-width: 640px; margin: 0 auto; background: #ffffff; border-radius: 8px; border: 1px solid #e2e8f0; overflow: hidden; }
+        .header { background: #0A192F; color: #ffffff; padding: 24px 30px; border-bottom: 3px solid #0284c7; }
+        .header h1 { margin: 0 0 4px 0; font-size: 19px; font-weight: 700; color: #ffffff; }
+        .header p { margin: 0; font-size: 12px; color: #94a3b8; text-transform: uppercase; letter-spacing: 1px; }
+        .badge { display: inline-block; background: #e0f2fe; color: #0369a1; padding: 4px 10px; border-radius: 4px; font-weight: 600; font-size: 12px; margin-top: 10px; }
+        .content { padding: 28px 30px; }
+        .section-title { font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.75px; color: #64748b; margin: 0 0 14px 0; border-bottom: 1px solid #f1f5f9; padding-bottom: 6px; }
+        .data-table { width: 100%; border-collapse: collapse; margin-bottom: 22px; }
+        .data-table th { text-align: left; padding: 9px 12px; background: #f8fafc; color: #475569; font-size: 13px; width: 35%; border-bottom: 1px solid #e2e8f0; vertical-align: top; }
+        .data-table td { padding: 9px 12px; color: #0f172a; font-size: 13.5px; border-bottom: 1px solid #e2e8f0; }
+        .attachment-box { background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 6px; padding: 14px; margin: 18px 0; }
+        .footer { background: #f8fafc; padding: 18px 30px; font-size: 12px; color: #64748b; border-top: 1px solid #e2e8f0; text-align: center; }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <div class="header">
+          <h1>Sea &amp; Seas Shipping Private Limited</h1>
+          <p>New Seafarer Career Application &bull; Intake Portal</p>
+          <div class="badge">Application Ref: ' . htmlspecialchars($refNumber, ENT_QUOTES, 'UTF-8') . '</div>
+        </div>
+        <div class="content">
+          <div class="section-title">Candidate Profile &amp; Sea Service</div>
+          <table class="data-table">
+            <tr>
+              <th>Applicant Name</th>
+              <td><strong>' . htmlspecialchars($fullName, ENT_QUOTES, 'UTF-8') . '</strong></td>
+            </tr>
+            <tr>
+              <th>Rank Applied For</th>
+              <td><strong style="color: #0284c7;">' . htmlspecialchars($rank, ENT_QUOTES, 'UTF-8') . '</strong></td>
+            </tr>
+            <tr>
+              <th>Email Address</th>
+              <td><a href="mailto:' . htmlspecialchars($email, ENT_QUOTES, 'UTF-8') . '">' . htmlspecialchars($email, ENT_QUOTES, 'UTF-8') . '</a></td>
+            </tr>
+            <tr>
+              <th>Phone / WhatsApp</th>
+              <td><a href="tel:' . htmlspecialchars($phone, ENT_QUOTES, 'UTF-8') . '">' . htmlspecialchars($phone, ENT_QUOTES, 'UTF-8') . '</a></td>
+            </tr>
+            <tr>
+              <th>INDOS / CDC No.</th>
+              <td><code>' . htmlspecialchars($indosCdc, ENT_QUOTES, 'UTF-8') . '</code></td>
+            </tr>
+            <tr>
+              <th>Sea-Time Experience</th>
+              <td>' . htmlspecialchars($seaTime, ENT_QUOTES, 'UTF-8') . '</td>
+            </tr>
+            <tr>
+              <th>Submission Time</th>
+              <td>' . date('d-M-Y H:i:s T') . '</td>
+            </tr>
+          </table>
 
-// Plain Text Body Construct
-$body = "Sea & Seas Shipping Private Limited — Seafarer Application\r\n" .
-        "=========================================================\r\n\r\n" .
-        "Application Ref : {$refNumber}\r\n" .
-        "Submission Time : " . date('d-M-Y H:i:s T') . "\r\n\r\n" .
-        "Applicant Name  : {$fullName}\r\n" .
-        "Rank Applied For: {$rank}\r\n" .
-        "Email Address   : {$email}\r\n" .
-        "WhatsApp / Phone: {$phone}\r\n" .
-        "INDOS / CDC No. : {$indosCdc}\r\n" .
-        "Sea-Time Rank   : {$seaTime}\r\n\r\n" .
-        "Attached Resume : {$file['name']} (" . round($file['size'] / 1024, 1) . " KB)\r\n" .
-        "Stored Location : uploads/{$safeStoredName}\r\n\r\n" .
-        "---------------------------------------------------------\r\n" .
-        "Candidate CV is attached to this email.\r\n" .
-        "To reply directly to the applicant, simply click Reply.\r\n";
+          <div class="section-title">Attached Curriculum Vitae</div>
+          <div class="attachment-box">
+            <strong>📎 Attached File:</strong> ' . htmlspecialchars($file['name'], ENT_QUOTES, 'UTF-8') . ' (' . round($file['size'] / 1024, 1) . ' KB)<br>
+            <span style="font-size:12px; color:#475569;">Verified document attached directly to this email transmission.</span>
+          </div>
+        </div>
+        <div class="footer">
+          Dispatched automatically via authenticated SMTP from <strong>Sea &amp; Seas Mail Gateway</strong>.<br>
+          Click <strong>Reply</strong> to respond directly to candidate ' . htmlspecialchars($fullName, ENT_QUOTES, 'UTF-8') . ' (' . htmlspecialchars($email, ENT_QUOTES, 'UTF-8') . ').
+        </div>
+      </div>
+    </body>
+    </html>';
 
-$emailMessage  = "--{$mimeBoundary}\r\n";
-$emailMessage .= "Content-Type: text/plain; charset=\"UTF-8\"\r\n";
-$emailMessage .= "Content-Transfer-Encoding: 7bit\r\n\r\n";
-$emailMessage .= $body . "\r\n\r\n";
+    // Plain Text Body Construct
+    $altBody = "Sea & Seas Shipping Private Limited — Seafarer Application\r\n" .
+               "=========================================================\r\n\r\n" .
+               "Application Ref : {$refNumber}\r\n" .
+               "Submission Time : " . date('d-M-Y H:i:s T') . "\r\n\r\n" .
+               "Applicant Name  : {$fullName}\r\n" .
+               "Rank Applied For: {$rank}\r\n" .
+               "Email Address   : {$email}\r\n" .
+               "WhatsApp / Phone: {$phone}\r\n" .
+               "INDOS / CDC No. : {$indosCdc}\r\n" .
+               "Sea-Time Rank   : {$seaTime}\r\n\r\n" .
+               "Attached Resume : {$file['name']} (" . round($file['size'] / 1024, 1) . " KB)\r\n" .
+               "Stored Location : uploads/{$safeStoredName}\r\n\r\n" .
+               "---------------------------------------------------------\r\n" .
+               "Candidate CV is attached to this email.\r\n" .
+               "To reply directly to the applicant, simply click Reply.\r\n";
 
-// Attachment
-$attachmentMime = match($ext) {
-    'pdf'   => 'application/pdf',
-    'doc'   => 'application/msword',
-    'docx'  => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-    default => 'application/octet-stream'
-};
+    $mail->isHTML(true);
+    $mail->Body    = $htmlBody;
+    $mail->AltBody = $altBody;
 
-$emailMessage .= "--{$mimeBoundary}\r\n";
-$emailMessage .= "Content-Type: {$attachmentMime}; name=\"{$sanitizedOriginal}\"\r\n";
-$emailMessage .= "Content-Disposition: attachment; filename=\"{$sanitizedOriginal}\"\r\n";
-$emailMessage .= "Content-Transfer-Encoding: base64\r\n\r\n";
-$emailMessage .= $encodedAttachment . "\r\n\r\n";
-$emailMessage .= "--{$mimeBoundary}--";
+    // Attach CV file directly from stored path
+    $mail->addAttachment($destination, $sanitizedOriginal);
 
-// Cross-Platform Envelope Sender (Windows IIS uses sendmail_from; Linux uses -f)
-if (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN') {
-    @ini_set('sendmail_from', $fromMailbox);
-    $mailSent = @mail($crewingMailbox, $subject, $emailMessage, $headers);
-} else {
-    $mailSent = @mail($crewingMailbox, $subject, $emailMessage, $headers, "-f{$fromMailbox}");
+    // Send the email via SMTP
+    $mail->send();
+    $mailSent = true;
+
+} catch (\Throwable $e) {
+    $mailSent = false;
+    $mailError = $e->getMessage();
+    error_log("[Sea & Seas Careers] SMTP Delivery Error for {$refNumber}: " . $mailError);
 }
 
 if (!$mailSent) {
-    error_log("[Sea & Seas Careers] mail() failed to send {$refNumber} to {$crewingMailbox}");
     http_response_code(500);
     echo json_encode([
         'success'   => false,
         'refNumber' => $refNumber,
-        'error'     => 'Server was unable to dispatch the application email. Please use the direct email button below to send your CV to crewing@seasshipping.com.',
-        'code'      => 'MAIL_DELIVERY_FAILED'
+        'error'     => 'Server was unable to dispatch the application email via SMTP. Please use the direct email button below to send your CV to crewing@seasshipping.com.',
+        'code'      => 'SMTP_DELIVERY_FAILED',
+        'details'   => $mailError ?? 'Unknown SMTP error'
     ]);
     exit;
 }
