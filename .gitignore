@@ -2,3 +2,20 @@
 Thumbs.db
 *.log
 *.zip
+
+# Local Node.js development files (live hosting uses PHP 8.2)
+server.js
+package.json
+package-lock.json
+node_modules/
+
+# Runtime Candidate Uploads & Roster Log (Privacy & Security)
+uploads/*
+!uploads/.htaccess
+!uploads/index.html
+applications_roster.json
+
+# Environment and Secrets
+.env
+*.env
+

@@ -914,11 +914,26 @@
     text-align:center;
     border-radius:2px;
     cursor:pointer;
-    transition:border-color .2s ease, background .2s ease;
+    transition:border-color .2s ease, background .2s ease, transform .2s ease;
   }
   .file-upload-box:hover{
     border-color:var(--brand-lime);
     background:var(--brand-lime-light);
+  }
+  .file-upload-box:focus-visible{
+    outline:2px solid var(--brand-lime);
+    outline-offset:3px;
+    border-color:var(--brand-lime);
+    background:rgba(167,219,40,0.08);
+  }
+  .file-upload-box.dragover{
+    border-color:var(--brand-lime) !important;
+    background:rgba(167,219,40,0.18) !important;
+    transform:scale(1.01);
+  }
+  .file-upload-box.has-file{
+    border-color:var(--brand-lime);
+    background:rgba(167,219,40,0.06);
   }
   .file-upload-box span{
     font-family:'IBM Plex Mono',monospace;
@@ -928,6 +943,12 @@
   }
   .file-upload-box small{
     font-size:10px;color:rgba(255,255,255,0.45);
+  }
+
+  .btn:disabled{
+    opacity:0.65;
+    cursor:not-allowed !important;
+    pointer-events:none;
   }
 
   .form-alert{
@@ -941,6 +962,13 @@
     font-size:13px;
   }
   .form-alert b{color:var(--brand-lime);display:block;margin-bottom:4px;font-family:'IBM Plex Mono',monospace;}
+  .form-alert.error-alert{
+    background:rgba(255,107,107,0.15);
+    border:1px solid #ff6b6b;
+  }
+  .form-alert.error-alert b{
+    color:#ff6b6b;
+  }
 
   /* ---------------- FLOATING WHATSAPP WIDGET ---------------- */
   .wa-widget{
@@ -1148,6 +1176,7 @@
 
     .form-container{padding:20px 16px;}
     .form-row{grid-template-columns:1fr;gap:12px;}
+    .contact-form input, .contact-form select, .contact-form textarea{font-size:16px !important;}
     .form-tabs{width:100%;gap:6px;}
     .tab-btn{flex:1;padding:12px 6px;font-size:11px;min-height:44px;display:flex;align-items:center;justify-content:center;text-align:center;}
 

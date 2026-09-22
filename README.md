@@ -52,8 +52,8 @@ SeaAndSeas_Website/
 └── image/                  # Static web images & membership assets
     ├── logo11.png          # Corporate logo
     ├── crew-mobilization-bulk-carrier-2026.webp # Crew mobilization portrait
-    ├── gallery-*.jpg       # International delegations & events
-    ├── capt-ujjawal-b-choudhary.png # Managing Director portrait
+    ├── gallery-*.*         # International delegations & events (PMO conference & dinner)
+    ├── Capt-Ujjawal-Chaudhary.png # Managing Director portrait
     ├── maccia.jpg          # MACCIA accreditation badge
     └── IMFLogo.png         # International Maritime Federation badge
 ```
@@ -109,11 +109,38 @@ This website is **100% compatible with shared hosting** on Plesk Obsidian withou
 
 ---
 
+## 🚢 Seafarer Careers & CV Intake Workflow
+
+The website includes an accessible, responsive intake form for seafarer applications:
+- **Validation**: Strict validation for Full Name, Rank, Email, Phone (+91/international regex), INDOS/CDC, and mandatory CV attachment.
+- **Upload Constraints**: Accepts `.pdf`, `.doc`, `.docx` up to 10 MB with drag-and-drop feedback and keyboard accessibility (`Enter`/`Space`).
+- **Anti-Spam**: Honeypot field trap (`_hp_trap`) and client-side throttling to reject bot submissions.
+- **Static & API Mode**:
+  - **Static / Client-side Mode**: Records applications in persistent `localStorage` (`seaandseas_applications`), displays unique reference numbers (`SS-APP-YYYY-XXXX`), and provides 1-click email/WhatsApp direct links to `crewing@seasshipping.com`.
+  - **Backend Server Mode (`server.js`)**: An Express server with Multer that stores uploaded CV files in `uploads/`, logs application details to `applications_roster.json`, and automatically emails the candidate profile and attached CV to `crewing@seasshipping.com` via SMTP.
+
+To run the backend email server locally:
+```bash
+npm install
+node server.js
+```
+
+SMTP Environment variables (optional):
+```bash
+export SMTP_HOST="smtp.gmail.com"
+export SMTP_PORT="465"
+export SMTP_USER="your-email@gmail.com"
+export SMTP_PASS="your-app-password"
+export CREWING_EMAIL="crewing@seasshipping.com"
+```
+
+---
+
 ## 🏢 Corporate Contact Information
 
 * **India Headquarters**:
   * **Address**: 410, 4th Floor, Concorde Building, Plot No. 66A, Sector-11, C.B.D. Belapur, Navi Mumbai, Maharashtra 400614, India.
-  * **Phone**: +91-22-49246060 / +91-22-49673720
+  * **Phone**: +91-22-49673720 / +91-22-49246060
   * **Email**: `crewing@seasshipping.com`
 * **UAE Operations**:
   * **Address**: Port Area, Serving Ajman, Sharjah, Sharjah Khalid Port & Hamriyah Ports, United Arab Emirates.
