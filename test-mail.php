@@ -513,10 +513,11 @@ if (PHP_SAPI === 'cli') {
       <div style="margin-top:22px;padding-top:16px;border-top:1px solid var(--border);">
         <div style="font-size:12px;font-weight:700;text-transform:uppercase;color:var(--muted);margin-bottom:10px;">Quick Test Server &amp; Driver Presets:</div>
         <div style="display:flex;gap:8px;flex-wrap:wrap;">
-          <a href="test-mail.php?key=<?= urlencode($providedKey) ?>&send=1&host=mail.accu20.com&port=587&enc=tls" class="btn" style="background:#0284c7;font-size:12px;padding:7px 14px;">🚀 mail.accu20.com : 587 (TLS)</a>
-          <a href="test-mail.php?key=<?= urlencode($providedKey) ?>&send=1&host=mail.accu20.com&port=465&enc=ssl" class="btn btn-secondary" style="font-size:12px;padding:7px 12px;">⚡ mail.accu20.com : 465 (SSL)</a>
-          <a href="test-mail.php?key=<?= urlencode($providedKey) ?>&send=1&host=mail.accu20.com&port=25&enc=none" class="btn btn-secondary" style="font-size:12px;padding:7px 12px;">⚡ mail.accu20.com : 25</a>
-          <a href="test-mail.php?key=<?= urlencode($providedKey) ?>&send=1&mailer=mail" class="btn btn-secondary" style="font-size:12px;padding:7px 12px;">✉️ Native mail()</a>
+          <a href="test-mail.php?key=<?= urlencode($providedKey) ?>&send=1&host=smtp.gmail.com&port=587&enc=tls" class="btn" style="background:#ea4335;font-size:12px;padding:7px 14px;">🔴 smtp.gmail.com : 587 (TLS)</a>
+          <a href="test-mail.php?key=<?= urlencode($providedKey) ?>&send=1&host=smtp.gmail.com&port=465&enc=ssl" class="btn btn-secondary" style="font-size:12px;padding:7px 12px;">🔴 smtp.gmail.com : 465 (SSL)</a>
+          <a href="test-mail.php?key=<?= urlencode($providedKey) ?>&send=1&host=mail.accu20.com&port=587&enc=tls" class="btn btn-secondary" style="font-size:12px;padding:7px 12px;">mail.accu20.com : 587</a>
+          <a href="test-mail.php?key=<?= urlencode($providedKey) ?>&send=1&host=mail.accu20.com&port=465&enc=ssl" class="btn btn-secondary" style="font-size:12px;padding:7px 12px;">mail.accu20.com : 465</a>
+          <a href="test-mail.php?key=<?= urlencode($providedKey) ?>&send=1&mailer=mail" class="btn btn-secondary" style="font-size:12px;padding:7px 12px;">Native mail()</a>
         </div>
       </div>
     </div>
