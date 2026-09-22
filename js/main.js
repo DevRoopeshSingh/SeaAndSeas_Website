@@ -343,7 +343,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const phoneEl = document.getElementById('crewPhone');
         const phoneRegex = /^\+?[0-9\s\-]{8,18}$/;
         if (phoneEl && !phoneRegex.test(phoneEl.value.trim())) {
-          phoneEl.setCustomValidity('Please enter a valid telephone / WhatsApp number (8 to 18 digits, e.g. +91 98201 55400).');
+          phoneEl.setCustomValidity('Please enter a valid telephone / WhatsApp number (8 to 18 digits, e.g. +91 98337 17556).');
           phoneEl.reportValidity();
           return;
         } else if (phoneEl) {
@@ -456,7 +456,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 Our technical recruitment officers will review your INDOS/CDC &amp; sea-time records within 24–48 hours.
               </div>
               <div style="margin-top:12px;display:flex;flex-wrap:wrap;gap:8px;">
-                <a href="https://wa.me/919820155400?text=${encodeURIComponent('Hello Sea & Seas Crewing Desk, I submitted an application for ' + rankVal + ' (Ref: ' + finalRef + ').')}" target="_blank" rel="noopener" class="btn btn-primary" style="padding:8px 14px;font-size:12px;text-decoration:none;display:inline-flex;align-items:center;gap:6px;">
+                <a href="https://wa.me/919833717556?text=${encodeURIComponent('Hello Sea & Seas Crewing Desk, I submitted an application for ' + rankVal + ' (Ref: ' + finalRef + ').')}" target="_blank" rel="noopener" class="btn btn-primary" style="padding:8px 14px;font-size:12px;text-decoration:none;display:inline-flex;align-items:center;gap:6px;">
                   💬 WhatsApp Crewing Desk (Instant Confirmation)
                 </a>
               </div>
@@ -488,7 +488,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 <a href="${emailHref}" class="btn btn-blue" style="padding:8px 14px;font-size:12px;text-decoration:none;display:inline-flex;align-items:center;gap:6px;">
                   ✉️ Email CV Directly to Crewing Desk
                 </a>
-                <a href="https://wa.me/919820155400?text=${encodeURIComponent('Hello Sea & Seas Crewing Desk, I submitted an application for ' + rankVal + ' (Ref: ' + finalRef + ').')}" target="_blank" rel="noopener" class="btn btn-primary" style="padding:8px 14px;font-size:12px;text-decoration:none;display:inline-flex;align-items:center;gap:6px;">
+                <a href="https://wa.me/919833717556?text=${encodeURIComponent('Hello Sea & Seas Crewing Desk, I submitted an application for ' + rankVal + ' (Ref: ' + finalRef + ').')}" target="_blank" rel="noopener" class="btn btn-primary" style="padding:8px 14px;font-size:12px;text-decoration:none;display:inline-flex;align-items:center;gap:6px;">
                   💬 WhatsApp Crewing Desk
                 </a>
               </div>
