@@ -142,6 +142,7 @@ if ($shouldSend) {
     } else {
         try {
             $mail = create_smtp_mailer(true, $debugCollector, $config);
+            $mail->AuthType = !empty($_REQUEST['authtype']) ? strtoupper(trim($_REQUEST['authtype'])) : 'LOGIN';
 
             $mail->addAddress($toAddress, 'Sea & Seas Mail Verification');
             if (!empty($config['reply_to'])) {

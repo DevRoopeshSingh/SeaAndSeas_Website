@@ -141,6 +141,7 @@ function create_smtp_mailer(bool $debug = false, ?callable $debugOutput = null, 
         $mail->isSMTP();
         $mail->Host       = (string) $config['host'];
         $mail->SMTPAuth   = true;
+        $mail->AuthType   = 'LOGIN'; // Force standard LOGIN authentication, bypassing broken CRAM-MD5
         $mail->Username   = (string) $config['username'];
         $mail->Password   = (string) $config['password'];
         $mail->CharSet    = 'UTF-8';
@@ -150,9 +151,9 @@ function create_smtp_mailer(bool $debug = false, ?callable $debugOutput = null, 
         $enc = strtolower((string) $config['encryption']);
         $port = (int) $config['port'];
 
-        if ($enc === 'ssl' || $port === 465) {
+        if ($enc === 'ssl' || ($port === 465 && $enc !== 'none')) {
             $mail->SMTPSecure = PHPMailer::ENCRYPTION_SMTPS;
-        } elseif ($enc === 'tls' || $port === 587) {
+        } elseif ($enc === 'tls') {
             $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
         } else {
             $mail->SMTPSecure = '';
