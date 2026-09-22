@@ -81,7 +81,7 @@
 <!-- Preload Hero Slide 1 for Fast LCP -->
 <link rel="preload" as="image" href="image/hero-slide-1.webp" type="image/webp">
 
-<link rel="stylesheet" href="css/style.css?v=2.1">
+<link rel="stylesheet" href="css/style.css?v=2.3">
 </head>
 <body>
 
@@ -923,16 +923,16 @@
             </div>
 
             <div>
-              <label for="cvFile">Curriculum Vitae / Resume Upload (PDF/DOCX) *</label>
-              <div class="file-upload-box" id="fileDropBox" role="button" tabindex="0" aria-label="Upload Curriculum Vitae in PDF or DOCX format. Maximum file size 10MB." aria-describedby="fileUploadHelp">
+              <span style="display:block;font-size:11px;font-family:'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:0.1em;color:rgba(255,255,255,0.7);margin-bottom:6px;">Curriculum Vitae / Resume Upload (PDF/DOCX) *</span>
+              <label class="file-upload-box" id="fileDropBox" for="cvFile" tabindex="0" role="button" aria-label="Upload Curriculum Vitae in PDF or DOCX format. Maximum file size 10MB." aria-describedby="fileUploadHelp">
                 <input type="file" id="cvFile" name="cv_file" style="display:none;" accept=".pdf,.doc,.docx" required>
                 <span id="fileNameDisplay">📎 Click or drag &amp; drop your CV (PDF/DOCX)</span>
                 <small id="fileUploadHelp">Max file size: 10MB • Accepted: .pdf, .doc, .docx</small>
-              </div>
+              </label>
               <div id="fileError" class="field-error" style="display:none;color:#ff6b6b;font-size:12px;margin-top:6px;font-family:'IBM Plex Mono',monospace;"></div>
             </div>
 
-            <button type="submit" id="crewSubmitBtn" class="btn btn-blue" style="align-self:flex-start;">
+            <button type="submit" id="crewSubmitBtn" class="btn btn-blue" style="margin-top:24px;align-self:flex-start;">
               <span class="btn-text">Submit Application to Crewing Desk</span>
               <span class="btn-spinner" style="display:none;" aria-hidden="true">⏳ Transmitting Application...</span>
             </button>
@@ -977,7 +977,7 @@
   </button>
 </div>
 
-<script src="js/main.js?v=2.1" defer></script>
+<script src="js/main.js?v=2.3" defer></script>
 
 </body>
 </html>

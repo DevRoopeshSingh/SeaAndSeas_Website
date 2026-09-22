@@ -249,9 +249,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Drag and Drop & Keyboard handlers on Dropzone
     if (fileDropBox && cvFile) {
-      fileDropBox.addEventListener('click', () => {
-        cvFile.click();
-      });
+      // If fileDropBox is not a native label, fallback to programmatic click
+      if (fileDropBox.tagName !== 'LABEL') {
+        fileDropBox.addEventListener('click', () => {
+          cvFile.click();
+        });
+      }
 
       fileDropBox.addEventListener('keydown', (e) => {
         if (e.key === 'Enter' || e.key === ' ') {
@@ -286,6 +289,13 @@ document.addEventListener('DOMContentLoaded', () => {
           }
           validateSelectedFile(dt.files[0]);
         }
+      });
+
+      // Prevent entire browser window from opening PDF if dropped outside the box
+      ['dragover', 'drop'].forEach(name => {
+        window.addEventListener(name, (e) => {
+          e.preventDefault();
+        });
       });
     }
 
@@ -505,13 +515,17 @@ document.addEventListener('DOMContentLoaded', () => {
     const waToggle = document.getElementById('waToggle');
     const waCard = document.getElementById('waCard');
     const waClose = document.getElementById('waClose');
-    waToggle.addEventListener('click', () => {
-      waCard.classList.toggle('open');
-    });
-    waClose.addEventListener('click', (e) => {
-      e.stopPropagation();
-      waCard.classList.remove('open');
-    });
+    if (waToggle && waCard) {
+      waToggle.addEventListener('click', () => {
+        waCard.classList.toggle('open');
+      });
+    }
+    if (waClose && waCard) {
+      waClose.addEventListener('click', (e) => {
+        e.stopPropagation();
+        waCard.classList.remove('open');
+      });
+    }
 
     // Automatic Hero Background Slider
     const heroSlides = document.querySelectorAll('.hero-slide');

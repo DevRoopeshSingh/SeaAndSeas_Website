@@ -908,6 +908,7 @@
   .contact-form textarea{resize:vertical;min-height:100px;}
   
   .file-upload-box{
+    display:block;
     border:1px dashed rgba(255,255,255,0.25);
     background:rgba(255,255,255,0.03);
     padding:16px;
@@ -915,6 +916,9 @@
     border-radius:2px;
     cursor:pointer;
     transition:border-color .2s ease, background .2s ease, transform .2s ease;
+  }
+  .file-upload-box *{
+    pointer-events:none;
   }
   .file-upload-box:hover{
     border-color:var(--brand-lime);
@@ -945,6 +949,10 @@
     font-size:10px;color:rgba(255,255,255,0.45);
   }
 
+  #crewSubmitBtn{
+    margin-top:24px;
+    align-self:flex-start;
+  }
   .btn:disabled{
     opacity:0.65;
     cursor:not-allowed !important;
