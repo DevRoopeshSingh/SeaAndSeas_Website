@@ -341,7 +341,7 @@ try {
               <td><a href="mailto:' . htmlspecialchars($email, ENT_QUOTES, 'UTF-8') . '">' . htmlspecialchars($email, ENT_QUOTES, 'UTF-8') . '</a></td>
             </tr>
             <tr>
-              <th>Phone / WhatsApp</th>
+              <th>Contact Phone Number</th>
               <td><a href="tel:' . htmlspecialchars($phone, ENT_QUOTES, 'UTF-8') . '">' . htmlspecialchars($phone, ENT_QUOTES, 'UTF-8') . '</a></td>
             </tr>
             <tr>
@@ -380,7 +380,7 @@ try {
                "Applicant Name  : {$fullName}\r\n" .
                "Rank Applied For: {$rank}\r\n" .
                "Email Address   : {$email}\r\n" .
-               "WhatsApp / Phone: {$phone}\r\n" .
+               "Contact Phone: {$phone}\r\n" .
                "INDOS / CDC No. : {$indosCdc}\r\n" .
                "Sea-Time Rank   : {$seaTime}\r\n\r\n" .
                "Attached Resume : {$file['name']} (" . round($file['size'] / 1024, 1) . " KB)\r\n" .

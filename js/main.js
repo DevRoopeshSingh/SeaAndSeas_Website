@@ -343,7 +343,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const phoneEl = document.getElementById('crewPhone');
         const phoneRegex = /^\+?[0-9\s\-]{8,18}$/;
         if (phoneEl && !phoneRegex.test(phoneEl.value.trim())) {
-          phoneEl.setCustomValidity('Please enter a valid telephone / WhatsApp number (8 to 18 digits, e.g. +91 98337 17556).');
+          phoneEl.setCustomValidity('Please enter a valid telephone / mobile number (8 to 18 digits, e.g. +91 98337 17556).');
           phoneEl.reportValidity();
           return;
         } else if (phoneEl) {
@@ -455,11 +455,6 @@ document.addEventListener('DOMContentLoaded', () => {
               <div style="margin-top:8px;font-size:12.5px;color:rgba(255,255,255,0.9);">
                 Our technical recruitment officers will review your INDOS/CDC &amp; sea-time records within 24–48 hours.
               </div>
-              <div style="margin-top:12px;display:flex;flex-wrap:wrap;gap:8px;">
-                <a href="https://wa.me/919833717556?text=${encodeURIComponent('Hello Sea & Seas Crewing Desk, I submitted an application for ' + rankVal + ' (Ref: ' + finalRef + ').')}" target="_blank" rel="noopener" class="btn btn-primary" style="padding:8px 14px;font-size:12px;text-decoration:none;display:inline-flex;align-items:center;gap:6px;">
-                  💬 WhatsApp Crewing Desk (Instant Confirmation)
-                </a>
-              </div>
             `;
           } else {
             // FALLBACK ONLY WHEN AUTOMATIC SUBMISSION IS UNAVAILABLE
@@ -469,7 +464,7 @@ document.addEventListener('DOMContentLoaded', () => {
               `Candidate: ${nameVal}\n` +
               `Rank Applied For: ${rankVal}\n` +
               `INDOS / CDC No: ${indosVal}\n` +
-              `Mobile / WhatsApp: ${phoneVal}\n` +
+              `Mobile / Phone: ${phoneVal}\n` +
               `Email: ${emailVal}\n` +
               `Sea-Time Experience: ${expVal}\n` +
               `Application Ref: ${finalRef}\n\n` +
@@ -487,9 +482,6 @@ document.addEventListener('DOMContentLoaded', () => {
               <div style="margin-top:12px;display:flex;flex-wrap:wrap;gap:8px;">
                 <a href="${emailHref}" class="btn btn-blue" style="padding:8px 14px;font-size:12px;text-decoration:none;display:inline-flex;align-items:center;gap:6px;">
                   ✉️ Email CV Directly to Crewing Desk
-                </a>
-                <a href="https://wa.me/919833717556?text=${encodeURIComponent('Hello Sea & Seas Crewing Desk, I submitted an application for ' + rankVal + ' (Ref: ' + finalRef + ').')}" target="_blank" rel="noopener" class="btn btn-primary" style="padding:8px 14px;font-size:12px;text-decoration:none;display:inline-flex;align-items:center;gap:6px;">
-                  💬 WhatsApp Crewing Desk
                 </a>
               </div>
             `;
@@ -511,21 +503,7 @@ document.addEventListener('DOMContentLoaded', () => {
       });
     }
 
-    // WhatsApp Widget Toggle
-    const waToggle = document.getElementById('waToggle');
-    const waCard = document.getElementById('waCard');
-    const waClose = document.getElementById('waClose');
-    if (waToggle && waCard) {
-      waToggle.addEventListener('click', () => {
-        waCard.classList.toggle('open');
-      });
-    }
-    if (waClose && waCard) {
-      waClose.addEventListener('click', (e) => {
-        e.stopPropagation();
-        waCard.classList.remove('open');
-      });
-    }
+
 
     // Automatic Hero Background Slider
     const heroSlides = document.querySelectorAll('.hero-slide');

@@ -25,7 +25,7 @@ This repository contains the complete production-grade source code for the offic
   * Keyboard-accessible collapsible service accordions.
   * Live-animated data counters and trade route diagrams.
   * Technical fleet specification showcases.
-* **Quick Contact & Direct WhatsApp Integration**: Floating pulse WhatsApp widget with direct message deep-linking to crewing desks in India and the UAE.
+* **Quick Contact & Direct Inquiries**: Corporate contact channels with direct routing to crewing desks in India and the UAE.
 * **SEO & Social Sharing Ready**:
   * Full OpenGraph and Twitter Card metadata.
   * Schema.org `Corporation` JSON-LD structured data with dual-location address mapping.
@@ -125,7 +125,7 @@ The website includes an accessible, responsive intake form for seafarer applicat
 - **Upload Constraints**: Accepts `.pdf`, `.doc`, `.docx` up to 10 MB with drag-and-drop feedback and keyboard accessibility (`Enter`/`Space`).
 - **Anti-Spam**: Honeypot field trap (`_hp_trap`) and client-side throttling to reject bot submissions.
 - **Static & API Mode**:
-  - **Static / Client-side Mode**: Records applications in persistent `localStorage` (`seaandseas_applications`), displays unique reference numbers (`SS-APP-YYYY-XXXX`), and provides 1-click email/WhatsApp direct links to `crewing@seasshipping.com`.
+  - **Static / Client-side Mode**: Records applications in persistent `localStorage` (`seaandseas_applications`), displays unique reference numbers (`SS-APP-YYYY-XXXX`), and provides 1-click email direct links to `crewing@seasshipping.com`.
   - **Backend Server Mode (`server.js`)**: An Express server with Multer that stores uploaded CV files in `uploads/`, logs application details to `applications_roster.json`, and automatically emails the candidate profile and attached CV to `crewing@seasshipping.com` via SMTP.
 
 To run the backend email server locally:
