@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Crewing Desk Admin Portal | Sea &amp; Seas Shipping</title>
+  <link rel="icon" type="image/png" href="logo11.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+  <style>
+    :root {
+      --admin-navy: #0b192c;
+      --admin-surface: #12243e;
+      --admin-card: #182e4b;
+      --admin-border: #234168;
+      --admin-lime: #a7db28;
+      --admin-text: #f8fafc;
+      --admin-sub: #94a3b8;
+    }
+    body {
+      background: var(--admin-navy);
+      color: var(--admin-text);
+      font-family: 'Inter', -apple-system, sans-serif;
+      margin: 0;
+      padding: 0;
+      min-height: 100vh;
+    }
+    .admin-header {
+      background: var(--admin-surface);
+      border-bottom: 1px solid var(--admin-border);
+      padding: 16px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .admin-brand {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+    .admin-brand img {
+      height: 40px;
+      width: auto;
+    }
+    .admin-badge {
+      background: rgba(167, 219, 40, 0.15);
+      color: var(--admin-lime);
+      border: 1px solid var(--admin-lime);
+      font-size: 11px;
+      font-weight: 700;
+      padding: 3px 8px;
+      border-radius: 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .admin-user {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      font-size: 13px;
+    }
+    .btn-logout {
+      background: transparent;
+      border: 1px solid #ef4444;
+      color: #ef4444;
+      padding: 6px 14px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 12px;
+      transition: all 0.2s;
+    }
+    .btn-logout:hover {
+      background: #ef4444;
+      color: #fff;
+    }
+    .admin-container {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 24px;
+    }
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+    .stat-card {
+      background: var(--admin-surface);
+      border: 1px solid var(--admin-border);
+      padding: 18px 20px;
+      border-radius: 6px;
+    }
+    .stat-label {
+      font-size: 12px;
+      color: var(--admin-sub);
+      text-transform: uppercase;
+      font-weight: 600;
+      margin-bottom: 6px;
+    }
+    .stat-val {
+      font-size: 28px;
+      font-weight: 800;
+      color: var(--admin-text);
+      font-family: 'IBM Plex Mono', monospace;
+    }
+    .controls-bar {
+      background: var(--admin-surface);
+      border: 1px solid var(--admin-border);
+      padding: 16px 20px;
+      border-radius: 6px;
+      display: flex;
+      gap: 14px;
+      flex-wrap: wrap;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+    .admin-input, .admin-select {
+      background: var(--admin-card);
+      border: 1px solid var(--admin-border);
+      color: #fff;
+      padding: 9px 12px;
+      border-radius: 4px;
+      font-size: 13px;
+      outline: none;
+    }
+    .admin-input:focus, .admin-select:focus {
+      border-color: var(--admin-lime);
+    }
+    .admin-input {
+      flex: 1;
+      min-width: 240px;
+    }
+    .table-card {
+      background: var(--admin-surface);
+      border: 1px solid var(--admin-border);
+      border-radius: 6px;
+      overflow: hidden;
+    }
+    .admin-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12.5px;
+      text-align: left;
+    }
+    .admin-table th {
+      background: var(--admin-card);
+      padding: 12px 16px;
+      font-weight: 600;
+      color: var(--admin-sub);
+      border-bottom: 1px solid var(--admin-border);
+      text-transform: uppercase;
+      font-size: 11px;
+      letter-spacing: 0.5px;
+    }
+    .admin-table td {
+      padding: 14px 16px;
+      border-bottom: 1px solid rgba(35, 65, 104, 0.4);
+      vertical-align: middle;
+    }
+    .admin-table tr:hover {
+      background: rgba(24, 46, 75, 0.5);
+    }
+    .ref-badge {
+      font-family: 'IBM Plex Mono', monospace;
+      font-weight: 700;
+      color: var(--admin-lime);
+      background: rgba(167, 219, 40, 0.1);
+      padding: 2px 6px;
+      border-radius: 3px;
+    }
+    .status-tag {
+      display: inline-block;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 3px 8px;
+      border-radius: 3px;
+      text-transform: uppercase;
+    }
+    .status-submitted { background: rgba(59, 130, 246, 0.15); color: #60a5fa; }
+    .status-under_review { background: rgba(245, 158, 11, 0.15); color: #fbbf24; }
+    .status-shortlisted { background: rgba(16, 185, 129, 0.15); color: #34d399; }
+    .status-rejected { background: rgba(239, 68, 68, 0.15); color: #f87171; }
+    .btn-action {
+      background: var(--admin-card);
+      border: 1px solid var(--admin-border);
+      color: #fff;
+      padding: 6px 10px;
+      border-radius: 4px;
+      font-size: 11.5px;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      transition: all 0.15s;
+    }
+    .btn-action:hover {
+      background: var(--admin-lime);
+      color: #0b192c;
+      border-color: var(--admin-lime);
+      font-weight: 600;
+    }
+    .btn-docx {
+      border-color: #3b82f6;
+      color: #60a5fa;
+    }
+    .btn-docx:hover {
+      background: #3b82f6;
+      color: #fff;
+    }
+    /* Modal Styles */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(11, 25, 44, 0.85);
+      backdrop-filter: blur(4px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      padding: 20px;
+    }
+    .modal-box {
+      background: var(--admin-surface);
+      border: 1px solid var(--admin-border);
+      border-radius: 8px;
+      width: 100%;
+      max-width: 900px;
+      max-height: 90vh;
+      overflow-y: auto;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+    }
+    .modal-header {
+      padding: 18px 24px;
+      border-bottom: 1px solid var(--admin-border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      position: sticky;
+      top: 0;
+      background: var(--admin-surface);
+      z-index: 10;
+    }
+    .modal-header h3 {
+      margin: 0;
+      font-size: 18px;
+    }
+    .btn-close {
+      background: none;
+      border: none;
+      color: var(--admin-sub);
+      font-size: 24px;
+      cursor: pointer;
+    }
+    .modal-body {
+      padding: 24px;
+    }
+    .dossier-sec {
+      background: var(--admin-card);
+      border: 1px solid var(--admin-border);
+      padding: 16px;
+      border-radius: 6px;
+      margin-bottom: 16px;
+    }
+    .dossier-title {
+      color: var(--admin-lime);
+      font-size: 13px;
+      font-weight: 700;
+      text-transform: uppercase;
+      margin-bottom: 12px;
+      border-bottom: 1px solid var(--admin-border);
+      padding-bottom: 6px;
+    }
+    .dossier-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 12px;
+      font-size: 12px;
+    }
+    .dossier-item span {
+      display: block;
+      color: var(--admin-sub);
+      font-size: 11px;
+      margin-bottom: 2px;
+    }
+    .dossier-item strong {
+      color: #fff;
+      font-weight: 600;
+    }
+    /* Login Box */
+    .login-card {
+      max-width: 400px;
+      margin: 80px auto;
+      background: var(--admin-surface);
+      border: 1px solid var(--admin-border);
+      padding: 32px;
+      border-radius: 8px;
+      box-shadow: 0 16px 32px rgba(0,0,0,0.4);
+      text-align: center;
+    }
+    .login-card h2 {
+      margin: 12px 0 6px 0;
+      font-size: 20px;
+    }
+    .login-card p {
+      color: var(--admin-sub);
+      font-size: 13px;
+      margin-bottom: 24px;
+    }
+    .login-btn {
+      width: 100%;
+      background: var(--admin-lime);
+      color: #0b192c;
+      border: none;
+      padding: 12px;
+      border-radius: 4px;
+      font-weight: 700;
+      font-size: 14px;
+      cursor: pointer;
+      margin-top: 12px;
+    }
+    .login-error {
+      background: rgba(239, 68, 68, 0.15);
+      border: 1px solid #ef4444;
+      color: #fca5a5;
+      padding: 8px;
+      border-radius: 4px;
+      font-size: 12px;
+      margin-bottom: 14px;
+      display: none;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- AUTHENTICATED ADMIN APP -->
+  <div id="adminApp" style="display:none;">
+    <header class="admin-header">
+      <div class="admin-brand">
+        <a href="index.html">
+          <img src="logo11.png" alt="Sea &amp; Seas Shipping Logo">
+        </a>
+        <span class="admin-badge">Crewing Management Desk</span>
+      </div>
+      <div class="admin-user">
+        <span>Officer: <strong style="color:var(--admin-lime);">Superintendent Admin</strong></span>
+        <button type="button" class="btn-logout" id="logoutBtn">Logout</button>
+      </div>
+    </header>
+
+    <main class="admin-container">
+      <!-- STATS BAR -->
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-label">Total Applications</div>
+          <div class="stat-val" id="statTotal">0</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">New Submissions</div>
+          <div class="stat-val" id="statNew" style="color:#60a5fa;">0</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Under Matrix Review</div>
+          <div class="stat-val" id="statReview" style="color:#fbbf24;">0</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Shortlisted Berths</div>
+          <div class="stat-val" id="statShortlisted" style="color:var(--admin-lime);">0</div>
+        </div>
+      </div>
+
+      <!-- FILTER CONTROLS -->
+      <div class="controls-bar">
+        <input type="text" id="searchInput" class="admin-input" placeholder="🔍 Search by Ref No, Name, INDOS, Phone, or Email...">
+        <select id="rankFilter" class="admin-select">
+          <option value="">All Maritime Ranks</option>
+          <option value="Master">Master</option>
+          <option value="Chief Officer">Chief Officer</option>
+          <option value="2nd Officer">2nd Officer</option>
+          <option value="3rd Officer">3rd Officer</option>
+          <option value="Chief Engineer">Chief Engineer</option>
+          <option value="2nd Engineer">2nd Engineer</option>
+          <option value="3rd Engineer">3rd Engineer</option>
+          <option value="4th Engineer">4th Engineer</option>
+          <option value="Electro-Technical Officer (ETO)">ETO</option>
+          <option value="Bosun">Bosun</option>
+          <option value="Able Seaman (AB)">Able Seaman (AB)</option>
+          <option value="Ordinary Seaman (OS)">Ordinary Seaman (OS)</option>
+          <option value="Motorman / Oiler">Motorman / Oiler</option>
+          <option value="Chief Cook">Chief Cook</option>
+        </select>
+        <select id="statusFilter" class="admin-select">
+          <option value="">All Statuses</option>
+          <option value="submitted">Submitted</option>
+          <option value="under_review">Under Review</option>
+          <option value="shortlisted">Shortlisted</option>
+          <option value="rejected">Rejected</option>
+        </select>
+        <button type="button" class="btn-action" id="refreshBtn">🔄 Refresh Matrix</button>
+      </div>
+
+      <!-- APPLICATIONS DATA TABLE -->
+      <div class="table-card">
+        <div style="overflow-x:auto;">
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th>Application Ref</th>
+                <th>Applicant Name</th>
+                <th>Rank Applied</th>
+                <th>INDOS / CDC</th>
+                <th>Phone / Mobile</th>
+                <th>Date Applied</th>
+                <th>Status</th>
+                <th style="text-align:right;">Crewing Actions</th>
+              </tr>
+            </thead>
+            <tbody id="applicationsTableBody">
+              <tr>
+                <td colspan="8" style="text-align:center;padding:32px;color:var(--admin-sub);">
+                  Loading seafarer applications roster...
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- LOGIN SCREEN -->
+  <div id="loginScreen" class="login-card">
+    <img src="logo11.png" alt="Sea &amp; Seas Logo" style="height:48px;width:auto;margin-bottom:12px;">
+    <h2>Crewing Desk Portal</h2>
+    <p>Sign in with authorized staff credentials to inspect seafarer applications &amp; Form RPS 01-A records.</p>
+    <div id="loginError" class="login-error" role="alert" aria-live="polite"></div>
+    <form id="loginForm">
+      <div style="margin-bottom:12px;text-align:left;">
+        <label style="font-size:11px;color:var(--admin-sub);display:block;margin-bottom:4px;">Username</label>
+        <input type="text" id="usernameInput" class="admin-input" style="width:100%;box-sizing:border-box;" autocomplete="username" required>
+      </div>
+      <div style="margin-bottom:16px;text-align:left;">
+        <label style="font-size:11px;color:var(--admin-sub);display:block;margin-bottom:4px;">Password</label>
+        <input type="password" id="passwordInput" class="admin-input" style="width:100%;box-sizing:border-box;" autocomplete="current-password" required>
+      </div>
+      <button type="submit" class="login-btn">Authenticate &amp; Access Roster</button>
+    </form>
+  </div>
+
+  <!-- DOSSIER DETAILS MODAL -->
+  <div id="dossierModal" class="modal-overlay" style="display:none;">
+    <div class="modal-box">
+      <div class="modal-header">
+        <div>
+          <h3 id="dossierTitle">Seafarer Bio-Data Dossier</h3>
+          <span id="dossierRef" class="ref-badge" style="font-size:12px;margin-top:4px;display:inline-block;"></span>
+        </div>
+        <button type="button" class="btn-close" id="closeDossierBtn">&times;</button>
+      </div>
+      <div class="modal-body" id="dossierBody">
+        <!-- Injected via JavaScript -->
+      </div>
+    </div>
+  </div>
+
+  <script src="js/admin.js?v=20261006-admin-fix"></script>
+</body>
+</html>

@@ -107,7 +107,7 @@
         <svg style="width:12px;height:12px;fill:currentColor;" viewBox="0 0 24 24"><path d="M20 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"/></svg>
         crewing@seasshipping.com
       </a>
-      <a href="#contact" class="mono" style="color:var(--brand-lime);font-weight:700;">[ Join Fleet / Apply ]</a>
+      <a href="apply.html" class="mono" style="color:var(--brand-lime);font-weight:700;">[ Form RPS 01-A / Apply ]</a>
     </div>
   </div>
 </div>
@@ -126,7 +126,7 @@
       <a href="#reach">Global Reach</a>
       <a href="#team">Team</a>
       <a href="#faq">FAQ</a>
-      <a href="#contact" class="nav-cta">Contact / Apply</a>
+      <a href="apply.html" class="nav-cta" style="background:var(--brand-lime);color:var(--midnight);font-weight:700;">Apply Online (RPS 01-A)</a>
     </nav>
     <button class="nav-toggle" id="navToggle" aria-label="Toggle navigation menu" aria-expanded="false">
       <span></span><span></span><span></span>
@@ -867,6 +867,15 @@
 
         <!-- PANEL: SEAFARER APPLICATION -->
         <div class="form-panel active" id="panelCrew">
+          <!-- PROMINENT FORM RPS 01-A CALLOUT -->
+          <div style="background:linear-gradient(135deg, rgba(167,219,40,0.18) 0%, rgba(36,88,166,0.15) 100%);border:1px solid rgba(167,219,40,0.4);padding:14px 18px;border-radius:3px;margin-bottom:18px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
+            <div>
+              <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--brand-lime);font-weight:700;text-transform:uppercase;letter-spacing:0.08em;">Official Seafarer Bio-Data &bull; Form RPS 01-A</div>
+              <div style="font-size:12.5px;color:var(--white);margin-top:2px;">Applying for officer/crew mobilization? Fill out the complete 7-step bio-data with 10-year sea-service history &amp; certification matrix.</div>
+            </div>
+            <a href="apply.html" class="btn btn-blue" style="padding:8px 18px;font-size:12px;font-weight:700;text-transform:none;white-space:nowrap;background:var(--brand-lime);color:var(--midnight);border-color:var(--brand-lime);">Open Form RPS 01-A &rarr;</a>
+          </div>
+
           <form class="contact-form" id="crewForm" action="submit_application.php" method="POST" enctype="multipart/form-data" novalidate>
             <!-- Anti-Spam Honeypot (hidden from real users) -->
             <div style="display:none !important;" aria-hidden="true">

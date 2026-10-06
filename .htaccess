@@ -10,11 +10,16 @@ AddDefaultCharset UTF-8
 # Block direct HTTP access to internal script and library directories
 <IfModule mod_rewrite.c>
 RewriteEngine On
-RewriteRule ^(includes|phpmailer)(/.*)?$ - [F,L]
+RewriteRule (^|/)\. - [F,L]
+RewriteRule ^(includes|phpmailer|lib|data|storage|uploads|applications_archive|tests|scripts|migrations|docs|node_modules)(/.*)?$ - [F,L]
+RewriteRule ^(NEW.*\.docx|server\.js|package(-lock)?\.json|test-mail\.php)$ - [F,L,NC]
+RewriteRule ^apply/?$ apply.html [L]
+RewriteRule ^admin/?$ admin.html [L]
+RewriteRule ^api/(.*)$ api.php?route=$1 [QSA,L]
 </IfModule>
 
 # Block access to sensitive data and config files
-<FilesMatch "(^|/)(\.env.*|applications_roster\.json|package\.json|server\.js|\.git.*|\.DS_Store|.*\.log|.*\.zip)$">
+<FilesMatch "(^|/)(\.env.*|applications_roster\.json|package.*\.json|server\.js|\.git.*|\.DS_Store|.*\.log|.*\.zip|.*\.sqlite.*|.*\.db.*|.*\.sql)$">
     <IfModule mod_authz_core.c>
         Require all denied
     </IfModule>

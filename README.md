@@ -60,88 +60,33 @@ SeaAndSeas_Website/
 
 ---
 
-## 🚀 Local Development
+## Local development and application processing
 
-Because this is a pure static web application, no compilation or build steps (`npm install` / `npm run build`) are needed.
+The complete `/apply` workflow runs on **PHP 8.2+**, with a private PDO SQLite database and table-mapped DOCX generation from `NEW-APPLICATION-FORMAT-1.docx`. Production supports PHP-only Plesk hosting; Node is used only for development tests. The older Node prototype is not the deployment entry point.
 
-### Running Locally:
-You can preview the website by opening `index.html` directly in any web browser, or via a local lightweight server:
+Configure `APP_ENV`, `APPLICATION_PRIVATE_DIR`, `ADMIN_USERNAME` and `ADMIN_PASSWORD_HASH` as described in the [setup and end-to-end testing guide](docs/application-setup.md). Private storage must be outside the web document root. There is no default staff password.
 
-#### Using Python:
 ```bash
-# Python 3
-python3 -m http.server 8000
-```
-Open [http://localhost:8000](http://localhost:8000) in your browser.
-
-#### Using Node (`npx serve` or `live-server`):
-```bash
-npx serve .
+php scripts/application-preflight.php
+php -d upload_max_filesize=10M -d post_max_size=12M -d max_input_vars=3000 -S 127.0.0.1:8000 scripts/php-router.php
 ```
 
-#### Using VS Code / IDE:
-Right-click on `index.html` and choose **Open with Live Server**.
+Open `http://127.0.0.1:8000/apply` for applicants and `/admin` for authorized staff. Applicants receive an application number and an expiring private DOCX download after their data and document are saved. Staff use password-hash authentication, HttpOnly sessions and protected dossier/CV/DOCX downloads. Drafts stay in the current browser tab. Optional reference-only notification emails use the existing PHPMailer configuration and a scheduled worker.
 
----
+## Mapping, tests and deployment
 
-## 🌐 Deployment Guide (Plesk Obsidian)
+The [inspection and data-model plan](docs/application-implementation-plan.md) and [complete field mapping](docs/application-field-mapping.md) document every scalar and repeat group. No legal declaration text or original template bytes were changed.
 
-This website is **100% compatible with shared hosting** on Plesk Obsidian (PHP 8.2+ / Apache & Nginx) without needing Node.js or external database daemons.
-
-### Step 1: Create Backup of Current Live Site
-1. Log in to your **Plesk Obsidian** panel (`seasshipping.com`).
-2. Go to **Websites & Domains** > `seasshipping.com` > **File Manager**.
-3. Inside `httpdocs/`, select all existing files and click **Add to Archive** (e.g. `backup_live_seasshipping.zip`).
-4. Download the backup `.zip` to your local storage for safekeeping.
-
-### Step 2: Upload Files
-1. Use the pre-built, verified deployment archive `deploy_seasshipping_production.zip`:
-   ```bash
-   # Generates clean bundle with all assets, backend PHP mailer, and secure configs:
-   zip -r deploy_seasshipping_production.zip index.html css/ js/ image/ hero-ship.jpg logo11.png IMFLogo.png maccia.jpg includes/ phpmailer/ submit_application.php test-mail.php uploads/ .htaccess web.config .env .env.example -x "*.DS_Store*" -x "*__MACOSX*"
-   ```
-2. In Plesk **File Manager**, navigate to `httpdocs/` and click **Upload**.
-3. Select `deploy_seasshipping_production.zip`, click **Extract Files**, and verify that `index.html` is placed directly in `httpdocs/`.
-
-### Step 3: Verify Environment & SMTP Dispatch
-1. Open the secure diagnostic suite in your browser:
-   `https://seasshipping.com/test-mail.php?key=seas2026`
-2. Verify that **SMTP Host**, **Port**, **Username**, and **Password Status** are correctly loaded.
-3. Click **"🚀 Send Test Verification Email"** to verify live transmission to `ohmeujjawal@gmail.com`.
-4. (Optional) Once verified, you may delete `test-mail.php` from `httpdocs/` or leave the access key protection active.
-
-### Step 4: Server Optimization & SSL Settings
-* **Default Document**: Ensure `index.html` is at the top of the **Index Files / Default Documents** list in Plesk.
-* **PHP Version**: Verify PHP 8.2 or 8.3 is selected for the domain under **PHP Settings**.
-* **Gzip & Caching**: Handled automatically via `.htaccess` (or enable Gzip under **Apache & nginx Settings**).
-* **SSL / HTTPS**: In **Hosting Settings**, enable **Permanent SEO-safe 301 redirect from HTTP to HTTPS** with your active Let's Encrypt SSL certificate.
-
----
-
-## 🚢 Seafarer Careers & CV Intake Workflow
-
-The website includes an accessible, responsive intake form for seafarer applications:
-- **Validation**: Strict validation for Full Name, Rank, Email, Phone (+91/international regex), INDOS/CDC, and mandatory CV attachment.
-- **Upload Constraints**: Accepts `.pdf`, `.doc`, `.docx` up to 10 MB with drag-and-drop feedback and keyboard accessibility (`Enter`/`Space`).
-- **Anti-Spam**: Honeypot field trap (`_hp_trap`) and client-side throttling to reject bot submissions.
-- **Static & API Mode**:
-  - **Static / Client-side Mode**: Records applications in persistent `localStorage` (`seaandseas_applications`), displays unique reference numbers (`SS-APP-YYYY-XXXX`), and provides 1-click email direct links to `crewing@seasshipping.com`.
-  - **Backend Server Mode (`server.js`)**: An Express server with Multer that stores uploaded CV files in `uploads/`, logs application details to `applications_roster.json`, and automatically emails the candidate profile and attached CV to `crewing@seasshipping.com` via SMTP.
-
-To run the backend email server locally:
 ```bash
-npm install
-node server.js
+npm ci
+npm run lint
+npm test
+npm run build
 ```
 
-SMTP Environment variables (optional):
-```bash
-export SMTP_HOST="smtp.gmail.com"
-export SMTP_PORT="465"
-export SMTP_USER="your-email@gmail.com"
-export SMTP_PASS="your-app-password"
-export CREWING_EMAIL="crewing@seasshipping.com"
-```
+These are development checks, with isolated synthetic PHP integration tests. The vanilla website has no TypeScript compilation or asset bundling step. No new production package was added. The [setup guide](docs/application-setup.md) covers all changed files, the additive database migration, PHP extensions/environment, Linux Apache/nginx and Windows IIS routing, scheduled recovery, private backups, manual Word checks and remaining limitations. Server PDF generation is not included; completed DOCX files can be exported from Word.
+
+For Plesk, upload the PHP/static deployment files identified in that guide, configure private storage and secrets separately, and enable HTTPS. Keep `.env`, database files, uploaded/generated dossiers, deployment ZIPs and diagnostic tools out of public access. Do not deploy `server.js`, Node dependencies or test artifacts. Verify the host OS and routing before deployment. A static-only server cannot process applications.
 
 ---
 

@@ -1,0 +1,21 @@
+{
+  "name": "sea-and-seas-shipping",
+  "version": "1.0.0",
+  "description": "Sea & Seas Shipping Private Limited - Global Crew Management & Ship Agency",
+  "scripts": {
+    "start": "php -d upload_max_filesize=10M -d post_max_size=12M -d max_input_vars=3000 -S 127.0.0.1:8000 scripts/php-router.php",
+    "dev": "npm start",
+    "lint": "node scripts/check-application.js",
+    "build": "node scripts/check-application.js --build",
+    "test": "node tests/application.test.js",
+    "check:runtime": "php scripts/application-preflight.php"
+  },
+  "dependencies": {
+    "@xmldom/xmldom": "^0.9.12",
+    "cors": "^2.8.5",
+    "express": "^4.19.2",
+    "jszip": "^3.10.2",
+    "multer": "^1.4.5-lts.1",
+    "nodemailer": "^6.9.13"
+  }
+}

@@ -60,6 +60,8 @@ function load_env_file(?string $envPath = null): void {
 
         $key = trim($parts[0]);
         $val = trim($parts[1]);
+        // Deployment environment and CLI overrides take precedence over .env.
+        if (getenv($key) !== false) continue;
 
         // Strip matching outer quotes
         if ((str_starts_with($val, '"') && str_ends_with($val, '"')) ||
@@ -165,9 +167,9 @@ function create_smtp_mailer(bool $debug = false, ?callable $debugOutput = null, 
     // Resilient SSL stream options for shared hosting environments
     $mail->SMTPOptions = [
         'ssl' => [
-            'verify_peer'       => false,
-            'verify_peer_name'  => false,
-            'allow_self_signed' => true
+            'verify_peer'       => true,
+            'verify_peer_name'  => true,
+            'allow_self_signed' => false
         ]
     ];
 
