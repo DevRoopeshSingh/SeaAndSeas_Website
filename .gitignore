@@ -15,6 +15,8 @@ applications_roster.json
 
 # Environment and Secrets
 .env
+.env.*
+!.env.example
 *.env
 
 # Private Application Storage & Embedded Databases
