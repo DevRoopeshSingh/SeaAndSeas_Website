@@ -115,14 +115,16 @@ The PHP Settings screenshot and phpinfo PDF supplied on **7 October 2026** confi
 | `upload_max_filesize` | `2M` | **Change to `10M`** for the advertised CV size |
 | `post_max_size` | `8M` | **Change to `12M`** to allow the CV plus form/multipart overhead |
 | `max_input_vars` | `1000` | **Change to `3000`** for the complete application form |
-| `open_basedir` | Subscription root `D:/Inetpub/vhosts/seasshipping.com/` and `C:/Windows/Temp/` | Covers the proposed sibling private directory below; preserve the restrictions |
+| `open_basedir` | Subscription root `D:/Inetpub/vhosts/seasshipping.com/` and `C:/Windows/Temp/` | Covers the site's sibling `private` directory; preserve the restrictions |
 | Error handling | Display errors off; log errors on | Keep errors private and inspect Plesk Logs when diagnosing failures |
 
 Set the three limits in the domain's PHP Settings and click **Apply**. If a field is unavailable, ask the host to set it for the site's handler. Reopen **View the phpinfo() page** and verify the **Local Value** column. The captured PDF predates these changes; it does not prove they have been applied.
 
-**Current readiness: local code checks pass; production acceptance is still blocked.** On 7 October, eight public assets matched the 6 October release after normalizing Windows line endings. A subsequent HTTP status recheck found `/`, `/apply` and `/admin` returning 200, but `/api.php?route=admin/me` still returned **503** and a HEAD request to `/applications_roster.json` returned **200**. Only headers were checked for private paths; no applicant records were downloaded. The reviewed local `web.config` blocks the legacy roster and QA directories, but that protection has not been verified on production. `/.env` and the original Word template returned 403.
+**Current readiness: the production storage error is resolved; full acceptance remains pending.** On 7 October, eight public assets matched the 6 October release after normalizing Windows line endings. In the authorized Plesk session, `httpdocs/.env` had `APPLICATION_PRIVATE_DIR=C:/Inetpub/vhosts/seasshipping.com/private`, although the site's actual subscription is on drive `D:`. Only that setting was corrected to `D:/Inetpub/vhosts/seasshipping.com/private`, using the existing sibling folder outside `httpdocs`. Staff credentials and mail settings were preserved; no ACL or `open_basedir` changes were needed.
 
-The required extensions are present in the supplied PDF. It does **not** confirm the application's effective `.env`, private-folder existence/NTFS permissions, database initialization, staff login or completed application generation. The upload-limit corrections alone do not resolve the GET staff API's 503 response. Run server preflight and inspect private error logs to identify the cause before accepting the release.
+After saving, `/api.php?route=admin/me` returned **401** with `Staff sign-in required.` rather than 503. This route initializes private storage and SQLite before checking the staff session, so the response confirms successful initialization through the site's web handler. The browser displayed the staff login form. HEAD checks returned **200** for `/`, `/apply` and `/admin`, and **403** for all ten private paths in the acceptance checklist below, including the legacy roster. No applicant records were downloaded.
+
+The required extensions are present in the supplied PDF. The corrected path and web check establish basic storage/database access, but staff authentication, existing-record availability, generated documents, scheduled workers and the effective upload limits still need verification. The SQLite initialization does not import the legacy JSON roster; preserve those records and verify any required migration separately. Complete the preflight and remaining live acceptance checks before marking the release accepted.
 
 ### Diagnosing the admin API's 503 response
 
@@ -132,7 +134,7 @@ The reviewed API now reports fixed configuration messages with an error `code` f
 | --- | --- |
 | `private_storage_path_invalid` | Set an absolute path for the server OS; Windows requires a drive path such as `D:/...`, not a local macOS path |
 | `private_storage_public` | Use a private directory outside `httpdocs` and any other served document root |
-| `private_storage_unavailable` | Confirm the folder can be created/resolved and is permitted by `open_basedir` and NTFS access |
+| `private_storage_unavailable` | Match the drive and subscription path to the site's actual document root, then check folder existence, `open_basedir` and NTFS access. This site's failure was a `C:` path on a `D:` subscription |
 | `private_storage_not_writable`, `private_subdirectory_unavailable`, `private_subdirectory_not_writable` | Grant the site's PHP account the required access to the private directory and its `files`/`sessions` children |
 | `sqlite_driver_unavailable` | Enable PDO SQLite for the site's actual PHP handler |
 | `database_migration_missing` | Upload the original `migrations/001_applications.sql` and verify PHP can read it |
@@ -151,11 +153,11 @@ If the old generic error persists after deploying, verify the paired PHP files w
 
 ## Production configuration and delivery
 
-For a new production installation, create a private sibling folder outside `httpdocs` and grant only the required site/hosting identities access through NTFS ACLs. This proposed path is inside the captured `open_basedir` allowance:
+The verified storage path for this site is the existing sibling folder `D:/Inetpub/vhosts/seasshipping.com/private`, outside `httpdocs` and inside the captured `open_basedir` allowance. For a new installation, create a private sibling folder and grant only the required site/hosting identities access through NTFS ACLs. The following shows the verified path and recommended production/test-notification settings; the latter settings still need separate verification:
 
 ```dotenv
 APP_ENV=production
-APPLICATION_PRIVATE_DIR=D:/Inetpub/vhosts/seasshipping.com/seaandseas-private
+APPLICATION_PRIVATE_DIR=D:/Inetpub/vhosts/seasshipping.com/private
 APPLICATION_EMAIL_ENABLED=false
 ```
 
@@ -178,7 +180,7 @@ Configure `ADMIN_USERNAME` and a real PHP `password_hash` value for `ADMIN_PASSW
 - With notifications disabled for the smoke test, submit a clearly marked synthetic application, confirm its real application number, download/open the completed Word document, and verify the dossier in the staff portal. Keep deployment QA identifiable and preserve real records.
 - Verify quick CV intake separately with a designated test recipient; it uses the mail workflow and sends actual email.
 
-The [setup guide](docs/application-setup.md) covers mapping, recovery, notifications, private backups and alternative Apache/nginx hosting. Server PDF generation is not included; staff can export the completed DOCX from Word. Windows NTFS permissions and the full production workflow remain unverified until the host checks above succeed. Passing local checks or pushing source to Git does not configure or deploy Plesk.
+The [setup guide](docs/application-setup.md) covers mapping, recovery, notifications, private backups and alternative Apache/nginx hosting. Server PDF generation is not included; staff can export the completed DOCX from Word. Basic Windows storage access is verified by the repaired API, but ACL scope and the full production workflow still require the remaining checks above. Passing local checks or pushing source to Git does not configure or deploy Plesk.
 
 ---
 
