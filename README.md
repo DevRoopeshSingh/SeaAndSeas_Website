@@ -89,7 +89,7 @@ npm run package:production
 
 These are development checks, with isolated synthetic PHP integration tests. Tests require permission to bind a localhost PHP server, use temporary private storage, send no mail, and must run under a non-root POSIX account for the storage-permission failure checks. The vanilla website has no TypeScript compilation or asset bundling step. Node dependencies are development tools and are not required on the production host.
 
-Verified locally on **7 October 2026**, using PHP **8.5.11** on macOS: **45 integration checks passed**; syntax checks passed for **17 PHP and 11 JavaScript files**; static build checks passed for **465 scalar fields**, **six repeat groups**, and the pinned Word template. Tests cover data mapping, duplicate retries, staff authorization/CSRF, private routes, expiry, failure recovery and preservation of the template's declarations and non-document ZIP parts. The added IIS access-rule regression checks the deny expression; it does not replace an integration check on the Windows host.
+Verified locally on **7 October 2026**, using PHP **8.5.11** on macOS: **52 integration checks passed**; syntax checks passed for **17 PHP and 11 JavaScript files**; static build checks passed for **465 scalar fields**, **six repeat groups**, and the pinned Word template. Tests cover data mapping, duplicate retries, staff authorization/CSRF, private routes, expiry, failure recovery, safe storage/database configuration errors and preservation of the template's declarations and non-document ZIP parts. The added IIS access-rule regression checks the deny expression; it does not replace an integration check on the Windows host.
 
 `npm run package:production` runs the build checks and writes this release's files:
 
@@ -123,6 +123,31 @@ Set the three limits in the domain's PHP Settings and click **Apply**. If a fiel
 **Current readiness: local code checks pass; production acceptance is still blocked.** On 7 October, eight public assets matched the 6 October release after normalizing Windows line endings. A subsequent HTTP status recheck found `/`, `/apply` and `/admin` returning 200, but `/api.php?route=admin/me` still returned **503** and a HEAD request to `/applications_roster.json` returned **200**. Only headers were checked for private paths; no applicant records were downloaded. The reviewed local `web.config` blocks the legacy roster and QA directories, but that protection has not been verified on production. `/.env` and the original Word template returned 403.
 
 The required extensions are present in the supplied PDF. It does **not** confirm the application's effective `.env`, private-folder existence/NTFS permissions, database initialization, staff login or completed application generation. The upload-limit corrections alone do not resolve the GET staff API's 503 response. Run server preflight and inspect private error logs to identify the cause before accepting the release.
+
+### Diagnosing the admin API's 503 response
+
+The reviewed API now reports fixed configuration messages with an error `code` for known storage/database setup failures, without returning absolute paths, passwords, hashes, SQL or underlying exception text. Unknown errors still use the generic message. Deploy `api.php` **together with** `includes/application_bootstrap.php`, the updated preflight script and the migration; a page refresh alone cannot update the backend.
+
+| API error code | Server action |
+| --- | --- |
+| `private_storage_path_invalid` | Set an absolute path for the server OS; Windows requires a drive path such as `D:/...`, not a local macOS path |
+| `private_storage_public` | Use a private directory outside `httpdocs` and any other served document root |
+| `private_storage_unavailable` | Confirm the folder can be created/resolved and is permitted by `open_basedir` and NTFS access |
+| `private_storage_not_writable`, `private_subdirectory_unavailable`, `private_subdirectory_not_writable` | Grant the site's PHP account the required access to the private directory and its `files`/`sessions` children |
+| `sqlite_driver_unavailable` | Enable PDO SQLite for the site's actual PHP handler |
+| `database_migration_missing` | Upload the original `migrations/001_applications.sql` and verify PHP can read it |
+| `database_open_failed` | Check access to the private SQLite database and parent folder; preserve existing records |
+| `database_initialize_failed` | Check database/journal permissions, disk space and the deployed migration; run preflight |
+
+In Plesk Scheduled Tasks, run a **PHP script** using the site's PHP version/account, with this script path:
+
+```text
+D:/Inetpub/vhosts/seasshipping.com/httpdocs/scripts/application-preflight.php
+```
+
+Use the task's file picker to select `httpdocs/scripts/application-preflight.php`; if the subscription panel expects a relative path, enter that rather than the absolute path above. Use **Run Now** to capture its output. See [Plesk's scheduled task instructions](https://docs.plesk.com/en-US/obsidian/reseller-guide/website-management/scheduling-tasks.70617/). The script is CLI-only and cannot be run by visiting its URL. Configuration failures include their code; SQLite failures also report SQLSTATE/driver codes. Preflight checks credentials without printing them, and initializes the private database through the additive migration. A Plesk task's account may differ from the web handler's identity, so successful CLI output must still be followed by a web check. When configured, `/api.php?route=admin/me` should return **401** before sign-in.
+
+If the old generic error persists after deploying, verify the paired PHP files were updated and check Plesk Logs for the latest `Application API` entry. Share only the error code or preflight output when troubleshooting; keep `.env` credentials and applicant data private. Do not delete/reset the application database to resolve a setup error.
 
 ## Production configuration and delivery
 

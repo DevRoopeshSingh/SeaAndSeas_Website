@@ -18,4 +18,12 @@ try {
         echo "Private storage and additive database migration: OK\n";
     }
     echo "PHP extensions, original template fingerprint and 12 tables: OK\n";
-} catch(Throwable $e){fwrite(STDERR,'Preflight failed: '.$e->getMessage().PHP_EOL);exit(1);}
+} catch(Throwable $e){
+    fwrite(STDERR,'Preflight failed: '.($e instanceof AppConfigurationException?'['.$e->configurationCode.'] ':'').$e->getMessage().PHP_EOL);
+    // CLI output stays private. Database diagnostics exclude paths and SQL values.
+    $cause=$e instanceof AppConfigurationException?$e->getPrevious():null;
+    if($cause instanceof PDOException){
+        fwrite(STDERR,'SQLite SQLSTATE: '.$cause->getCode().'; driver code: '.($cause->errorInfo[1]??'unknown').PHP_EOL);
+    }
+    exit(1);
+}

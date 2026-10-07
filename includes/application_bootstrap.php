@@ -6,6 +6,17 @@ date_default_timezone_set('UTC');
 ini_set('display_errors', '0');
 umask(0077);
 
+// Only fixed configuration messages may reach an unauthenticated API response.
+// Never include filesystem paths, credentials, SQL or the underlying exception text.
+class AppConfigurationException extends RuntimeException {
+    public function __construct(public readonly string $configurationCode, string $message, ?Throwable $previous=null) {
+        parent::__construct($message,0,$previous);
+    }
+}
+function app_configuration_failure(string $code,string $message,?Throwable $previous=null): never {
+    throw new AppConfigurationException($code,$message,$previous);
+}
+
 function app_schema(): array {
     static $schema;
     return $schema ??= json_decode(file_get_contents(__DIR__.'/../js/application-schema.json'), true, 512, JSON_THROW_ON_ERROR);
@@ -15,28 +26,49 @@ function app_root(): string {
     static $root;
     if ($root) return $root;
     $configured = get_env_var('APPLICATION_PRIVATE_DIR');
-    if (!$configured || !preg_match('~^(?:/|[A-Za-z]:[\\\\/])~', $configured)) throw new RuntimeException('Configure absolute APPLICATION_PRIVATE_DIR outside the web root.');
-    if (!is_dir($configured) && !mkdir($configured, 0700, true)) throw new RuntimeException('Private storage unavailable.');
+    $absolute=PHP_OS_FAMILY==='Windows'
+        ? $configured && preg_match('~^[A-Za-z]:[\\\\/]~',$configured)
+        : $configured && str_starts_with($configured,'/');
+    if (!$absolute) app_configuration_failure('private_storage_path_invalid','Configure APPLICATION_PRIVATE_DIR as an absolute path for this server OS, outside the web root. Do not use a local development path.');
+    if (!is_dir($configured) && !mkdir($configured, 0700, true)) app_configuration_failure('private_storage_unavailable','Private application storage cannot be created or accessed. Check the folder, open_basedir and site account permissions.');
     $resolved = str_replace('\\', '/', realpath($configured) ?: '');
-    if ($resolved === '') throw new RuntimeException('Private storage unavailable.');
+    if ($resolved === '') app_configuration_failure('private_storage_unavailable','Private application storage cannot be resolved. Check the folder, open_basedir and site account permissions.');
     $web = str_replace('\\', '/', realpath(__DIR__.'/..'));
     $documentRoot = str_replace('\\', '/', realpath($_SERVER['DOCUMENT_ROOT'] ?? $web) ?: $web);
     foreach ([$web,$documentRoot] as $public) {
         $candidate = PHP_OS_FAMILY === 'Windows' ? strtolower($resolved) : $resolved;
         $public = PHP_OS_FAMILY === 'Windows' ? strtolower($public) : $public;
-        if ($candidate === $public || str_starts_with($candidate, rtrim($public,'/').'/')) throw new RuntimeException('Storage must be outside the document root.');
+        if ($candidate === $public || str_starts_with($candidate, rtrim($public,'/').'/')) app_configuration_failure('private_storage_public','Private application storage must be outside the document root. Configure a private folder before using the application service.');
     }
-    if (!is_writable($resolved)) throw new RuntimeException('Private storage is not writable.');
-    foreach (['files','sessions'] as $dir) if (!is_dir($resolved.'/'.$dir) && !mkdir($resolved.'/'.$dir,0700)) throw new RuntimeException('Private directory unavailable.');
+    if (!is_writable($resolved)) app_configuration_failure('private_storage_not_writable','Private application storage is not writable. Grant the site PHP account access to the private folder.');
+    foreach (['files','sessions'] as $dir) {
+        $directory=$resolved.'/'.$dir;
+        if (!is_dir($directory) && !mkdir($directory,0700)) app_configuration_failure('private_subdirectory_unavailable','Private application files or sessions cannot be created. Check the site PHP account permissions.');
+        if (!is_writable($directory)) app_configuration_failure('private_subdirectory_not_writable','Private application files or sessions are not writable. Check the site PHP account permissions.');
+    }
     return $root = $resolved;
 }
 function app_db(): PDO {
     static $db;
     if ($db) return $db;
-    $db = new PDO('sqlite:'.app_root().'/applications.sqlite', null, null, [PDO::ATTR_ERRMODE=>PDO::ERRMODE_EXCEPTION, PDO::ATTR_DEFAULT_FETCH_MODE=>PDO::FETCH_ASSOC]);
-    $db->exec('PRAGMA busy_timeout=5000; PRAGMA journal_mode=WAL; PRAGMA synchronous=FULL;');
-    $db->exec(file_get_contents(__DIR__.'/../migrations/001_applications.sql'));
-    return $db;
+    if (!extension_loaded('pdo_sqlite')) app_configuration_failure('sqlite_driver_unavailable','Enable PDO SQLite for the PHP handler serving this website.');
+    $root=app_root();
+    $migration=__DIR__.'/../migrations/001_applications.sql';
+    if (!is_file($migration)||!is_readable($migration)) app_configuration_failure('database_migration_missing','The application database migration is missing or unreadable. Upload migrations/001_applications.sql and check site account access.');
+    $sql=file_get_contents($migration);
+    if ($sql===false||trim($sql)==='') app_configuration_failure('database_migration_missing','The application database migration cannot be read. Upload migrations/001_applications.sql and check site account access.');
+    try {
+        $connection=new PDO('sqlite:'.$root.'/applications.sqlite',null,null,[PDO::ATTR_ERRMODE=>PDO::ERRMODE_EXCEPTION,PDO::ATTR_DEFAULT_FETCH_MODE=>PDO::FETCH_ASSOC]);
+    } catch (PDOException $e) {
+        app_configuration_failure('database_open_failed','The private application database cannot be opened. Check the private folder and database permissions for the site PHP account.',$e);
+    }
+    try {
+        $connection->exec('PRAGMA busy_timeout=5000; PRAGMA journal_mode=WAL; PRAGMA synchronous=FULL;');
+        $connection->exec($sql);
+    } catch (PDOException $e) {
+        app_configuration_failure('database_initialize_failed','The private application database cannot be initialized. Check database and journal permissions, disk space and the deployed migration. Run server preflight for details.',$e);
+    }
+    return $db=$connection;
 }
 function app_audit(PDO $db, ?string $id, string $event, string $actor='applicant'): void {
     $db->prepare('INSERT INTO application_audit(application_id,event,actor,created_at) VALUES(?,?,?,?)')->execute([$id,$event,$actor,gmdate('c')]);

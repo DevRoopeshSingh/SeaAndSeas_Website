@@ -55,7 +55,15 @@ try {
         app_audit($db,$m[1],'status_'.$status,$staff);$db->commit();app_json(['success'=>true]);
     }
     app_json(['success'=>false,'error'=>'Endpoint not found.'],404);
-}catch(Throwable $e){if(isset($db)&&$db->inTransaction())$db->rollBack();error_log('Application API error: '.get_class($e));app_json(['success'=>false,'error'=>'Application service unavailable. Check server configuration.'],503);}
+}catch(Throwable $e){
+    if(isset($db)&&$db->inTransaction())$db->rollBack();
+    if($e instanceof AppConfigurationException){
+        error_log('Application API configuration error: '.$e->configurationCode);
+        app_json(['success'=>false,'error'=>$e->getMessage(),'code'=>$e->configurationCode],503);
+    }
+    error_log('Application API error: '.get_class($e));
+    app_json(['success'=>false,'error'=>'Application service unavailable. Check server configuration.'],503);
+}
 function app_admin_record(array $r): array {
     return ['id'=>$r['id'],'refNumber'=>$r['ref_number'],'fullName'=>$r['full_name'],'positionApplied'=>$r['position_applied'],'email'=>$r['email'],'phone'=>$r['phone'],'indosNumber'=>$r['indos_number'],'status'=>$r['status'],'submittedAt'=>$r['submitted_at'],'updatedAt'=>$r['updated_at'],'cvOriginalName'=>$r['cv_name'],'cvSizeKb'=>round(($r['cv_size']??0)/1024),'hasDocx'=>!empty($r['docx_path'])];
 }

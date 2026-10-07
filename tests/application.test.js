@@ -90,15 +90,36 @@ async function main(){
  check('Unconfigured login explains setup failure before database initialization',()=>assert.match(JSON.parse(missingAdmin.stdout).error,/Staff sign-in has not been configured/));
  const missingStorage=spawnSync('php',['-r',"$_GET['route']='admin/login';$_SERVER['REQUEST_METHOD']='POST';require 'api.php';"],{cwd:deployment,env:{...setupEnv,ADMIN_USERNAME:'teststaff',ADMIN_PASSWORD_HASH:hash,APPLICATION_PRIVATE_DIR:''},encoding:'utf8'});
  check('Missing private storage has a clear staff login error',()=>assert.match(JSON.parse(missingStorage.stdout).error,/Private application storage has not been configured/));
+ const configRequest=(privatePath=path.join(temp,'setup-private'))=>spawnSync('php',['-r',"$_GET['route']='admin/me';$_SERVER['REQUEST_METHOD']='GET';require 'api.php';"],{cwd:deployment,env:{...setupEnv,ADMIN_USERNAME:'teststaff',ADMIN_PASSWORD_HASH:hash,APPLICATION_PRIVATE_DIR:privatePath},encoding:'utf8'});
+ function configurationCode(response,code){
+   const body=JSON.parse(response.stdout);assert.equal(body.success,false);assert.equal(body.code,code);
+   for(const sensitive of[temp,hash,'existing-test-mail-password','SELECT ','CREATE TABLE'])assert.ok(!response.stdout.includes(sensitive),sensitive);
+   assert.ok(response.stderr.includes(code));
+ }
+ check('Invalid private path has a safe actionable configuration error',()=>configurationCode(configRequest('relative-private-test-marker'),'private_storage_path_invalid'));
+ check('Public storage is rejected without exposing its absolute path',()=>configurationCode(configRequest(deployment),'private_storage_public'));
+ const readonly=path.join(temp,'readonly-private');fs.mkdirSync(readonly,{mode:0o500});
+ try{check('Read-only private storage is identified before database access',()=>configurationCode(configRequest(readonly),'private_storage_not_writable'));}finally{fs.chmodSync(readonly,0o700);}
+ const sessions=path.join(temp,'setup-private','sessions');fs.chmodSync(sessions,0o500);
+ try{check('Read-only private sessions have a safe configuration error',()=>configurationCode(configRequest(),'private_subdirectory_not_writable'));}finally{fs.chmodSync(sessions,0o700);}
+ const migration=path.join(deployment,'migrations','001_applications.sql');const migrationSql=fs.readFileSync(migration);
+ fs.unlinkSync(migration);
+ try{check('Missing deployment migration is identified safely',()=>configurationCode(configRequest(),'database_migration_missing'));}finally{fs.writeFileSync(migration,migrationSql);}
+ const setupDb=path.join(temp,'setup-private','applications.sqlite');fs.chmodSync(setupDb,0o000);
+ try{check('Unreadable database is identified without exposing PDO details',()=>configurationCode(configRequest(),'database_open_failed'));}finally{fs.chmodSync(setupDb,0o600);}
+ fs.writeFileSync(migration,'INVALID SQL synthetic-private-marker');
+ try{check('Database initialization failure exposes no SQL or private values',()=>{const response=configRequest();configurationCode(response,'database_initialize_failed');assert.ok(!response.stdout.includes('synthetic-private-marker'));});}finally{fs.writeFileSync(migration,migrationSql);}
  await start(deployment);const failureKey=crypto.randomUUID();const failed=await submit(basic,failureKey);check('Missing template is a failure, never a success',()=>{assert.equal(failed.status,503);assert.equal(failed.body.success,false);});
  const dbPath=path.join(temp,'private','applications.sqlite');
  const query=sql=>spawnSync('php',['-r',"$d=new PDO('sqlite:'.$argv[1]);echo json_encode($d->query($argv[2])->fetchAll(PDO::FETCH_ASSOC));",dbPath,sql],{encoding:'utf8'}).stdout;
  check('Generation failure has a recoverable failed record and no files',()=>{const rows=JSON.parse(query("SELECT id,status,cv_path,docx_path FROM applications WHERE status='failed'"));assert.equal(rows.length,1);assert.equal(rows[0].cv_path,null);assert.equal(rows[0].docx_path,null);assert.ok(!fs.existsSync(path.join(temp,'private','files',rows[0].id)));});
  fs.copyFileSync(path.join(root,schema.template),path.join(deployment,schema.template));const recovered=await submit(basic,failureKey);check('Same-key retry recovers failed generation',()=>assert.equal(recovered.status,200,JSON.stringify(recovered.body)));
- fs.chmodSync(path.join(temp,'private','files'),0o500);const storageFail=await submit(basic);fs.chmodSync(path.join(temp,'private','files'),0o700);check('Storage failure reports failure and keeps consistent state',()=>assert.equal(storageFail.status,503));
+ const countBeforeStorageFailure=JSON.parse(query('SELECT COUNT(*) AS total FROM applications'))[0].total;
+ fs.chmodSync(path.join(temp,'private','files'),0o500);const storageFail=await submit(basic);fs.chmodSync(path.join(temp,'private','files'),0o700);check('Storage failure reports failure before creating an application',()=>{assert.equal(storageFail.status,503);assert.equal(JSON.parse(query('SELECT COUNT(*) AS total FROM applications'))[0].total,countBeforeStorageFailure);});
  fs.chmodSync(dbPath,0o000);const dbFail=await submit(basic);fs.chmodSync(dbPath,0o600);check('Database failure reports service error, never success',()=>assert.equal(dbFail.status,503));
- const abandoned=JSON.parse(query("SELECT id FROM applications WHERE status='failed' LIMIT 1"))[0].id;
- spawnSync('php',['-r',"$d=new PDO('sqlite:'.$argv[1]);$s=$d->prepare(\"UPDATE applications SET status='processing',updated_at='2000-01-01' WHERE id=?\");$s->execute([$argv[2]]);",dbPath,abandoned]);
+ // Model an interrupted reservation explicitly; storage preflight now fails before a row is created.
+ const abandoned=crypto.randomBytes(16).toString('hex');
+ const reserve=spawnSync('php',['-r',"$d=new PDO('sqlite:'.$argv[1]);$s=$d->prepare(\"INSERT INTO applications(id,ref_number,full_name,position_applied,email,phone,indos_number,status,schema_version,data_json,idempotency_hash,payload_hash,submitted_at,updated_at) SELECT ?,?,full_name,position_applied,email,phone,indos_number,'processing',schema_version,data_json,?,payload_hash,'2000-01-01','2000-01-01' FROM applications LIMIT 1\");$s->execute([$argv[2],$argv[3],$argv[4]]);",dbPath,abandoned,'SS-APP-2026-'+crypto.randomBytes(6).toString('hex').toUpperCase(),crypto.randomBytes(32).toString('hex')],{encoding:'utf8'});assert.equal(reserve.status,0,reserve.stderr);
  const recovery=spawnSync('php',['scripts/recover-applications.php'],{cwd:deployment,env:{...process.env,APPLICATION_PRIVATE_DIR:path.join(temp,'private')},encoding:'utf8'});check('Recovery command resolves abandoned processing',()=>{assert.equal(recovery.status,0,recovery.stderr);assert.equal(JSON.parse(query("SELECT status FROM applications WHERE id='"+abandoned+"'"))[0].status,'failed');});
  check('Audit history records completion and failures without applicant payload',()=>{const events=JSON.parse(query('SELECT event FROM application_audit')).map(r=>r.event);assert.ok(events.includes('submitted'));assert.ok(events.includes('generation_or_storage_failed'));assert.ok(events.includes('abandoned_processing_recovered'));});
  console.log('\n'+passes+' checks passed. QA documents: test-output/. Runtime data: '+temp);
