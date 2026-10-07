@@ -76,7 +76,7 @@ Back up the database **and** generated/uploaded files together into private stor
 
 ## Plesk deployment
 
-The host OS was not confirmed. Check the panel's hosting/server information or ask the provider. Windows/IIS routing and NTFS permissions have not been integration-tested in this environment.
+The Plesk Settings screenshot and phpinfo PDF reviewed on 2026-10-07 confirm Windows Server 2022, IIS 10 and PHP 8.5.11 via CGI/FastCGI for seasshipping.com. PDO SQLite, DOM, ZIP, fileinfo and mbstring are enabled. The captured limits are still `upload_max_filesize=2M`, `post_max_size=8M` and `max_input_vars=1000`; update them as below. The [README](../README.md#confirmed-pleskwin-configuration-and-release-readiness) records the actual paths and unresolved live checks. Windows/IIS routing and NTFS permissions have not been integration-tested in this environment.
 
 Upload the existing public HTML/CSS/JS/images and required PHP files: `submit_application.php`, `api.php`, `download_application.php`, `includes/`, `phpmailer/`, `migrations/`, and the original `NEW-APPLICATION-FORMAT-1.docx`. Include the recovery/notification/preflight CLI scripts for scheduled tasks. Deploy `.htaccess` on Apache, or `web.config` on IIS with URL Rewrite installed/enabled. Do not upload Node prototypes (`server.js`, `lib/`, `node_modules/`), tests, QA files, database contents, deployment ZIPs or `test-mail.php`. Configure `.env` privately after upload. Retain the original template bytes; a changed template fails closed until its mapping is reinspected.
 
@@ -88,8 +88,8 @@ Set PHP `upload_max_filesize=10M`, `post_max_size=12M`, `max_input_vars=3000`, `
 
 ```nginx
 location ~ (^|/)\. { deny all; }
-location ~* ^/(includes|phpmailer|lib|data|storage|uploads|applications_archive|tests|scripts|migrations|docs|node_modules)(/|$) { deny all; }
-location ~* ^/(NEW.*\.docx|server\.js|package(-lock)?\.json|test-mail\.php)$ { deny all; }
+location ~* ^/(includes|phpmailer|lib|data|storage|uploads|applications_archive|tests|test-output|scratch|scripts|migrations|docs|node_modules)(/|$) { deny all; }
+location ~* ^/(applications_roster\.json|NEW.*\.docx|server\.js|package(-lock)?\.json|test-mail\.php)$ { deny all; }
 location ~* \.(sql|sqlite.*|db.*|log|zip)$ { deny all; }
 rewrite ^/apply/?$ /apply.html last;
 rewrite ^/admin/?$ /admin.html last;

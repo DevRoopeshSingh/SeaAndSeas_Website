@@ -8,7 +8,8 @@
     "lint": "node scripts/check-application.js",
     "build": "node scripts/check-application.js --build",
     "test": "node tests/application.test.js",
-    "check:runtime": "php scripts/application-preflight.php"
+    "check:runtime": "php scripts/application-preflight.php",
+    "package:production": "npm run build && node scripts/package-production.js"
   },
   "dependencies": {
     "@xmldom/xmldom": "^0.9.12",

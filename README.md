@@ -10,7 +10,7 @@
 
 **Sea & Seas Shipping Private Limited** is an ISO 9001:2015 certified maritime crew management, technical superintendence, and ship agency firm headquartered in **CBD Belapur, Navi Mumbai (India)** with operational representation in **Ajman / Sharjah (United Arab Emirates)**. The company is a certified member of the **International Maritime Federation (IMF)** and the **Maharashtra Chamber of Commerce, Industry & Agriculture (MACCIA)**.
 
-This repository contains the complete production-grade source code for the official website, built with modern HTML5, Vanilla CSS3, and ES6+ JavaScript.
+This repository contains the official website's HTML/CSS/JavaScript and PHP application backend. The public pages use vanilla JavaScript; full seafarer applications require PHP, private SQLite storage and the original Word template.
 
 ---
 
@@ -18,9 +18,10 @@ This repository contains the complete production-grade source code for the offic
 
 * **High-Performance Static Architecture**: Zero heavy frontend frameworks or build steps required. Extremely fast load times and minimal server overhead.
 * **Responsive Modern UI**: Designed with a maritime-inspired visual palette (Deep Navy `#10233C`, Royal Blue `#183358`, Electric Lime `#A7DB28`), custom typography (Inter, Big Shoulders Display, IBM Plex Mono), and smooth micro-interactions.
-* **Dual-Track Inquiry Portal**:
-  * **Shipowner & Principal Inquiries**: Vessel specifications, required crew complement, trading areas, and service requests.
-  * **Seafarer Career Applications**: Full ranking options (Master to Ratings), INDOS/CDC verification, and CV attachment upload feedback.
+* **Seafarer Application Workflows**:
+  * **Quick CV Intake**: Homepage form with rank, contact information, INDOS/CDC details and a CV attachment, delivered through the existing PHPMailer mail configuration.
+  * **Full Bio-Data Application**: Seven-step Form RPS 01-A with 465 scalar fields and six repeat groups, validated on the browser and server, saved privately with a completed Word document.
+  * **Staff Portal**: Authenticated roster search, complete dossier review, status updates and protected CV/Word downloads. INDOS/CDC details are captured; this code does not connect to a government verification service.
 * **Interactive Operations & Fleet Sections**:
   * Keyboard-accessible collapsible service accordions.
   * Live-animated data counters and trade route diagrams.
@@ -35,28 +36,29 @@ This repository contains the complete production-grade source code for the offic
 ## 📂 Project Structure
 
 ```text
-SeaAndSeas_Website/
-├── .gitignore              # Ignores OS metadata and deployment archives
-├── README.md               # Project documentation
-├── index.html              # Main production landing page (~48 KB)
-├── SeaAndSeas_Website.html # Source HTML mirror
-├── website.html            # Source HTML mirror
-├── hero-ship.jpg           # High-resolution hero vessel photography
-├── logo11.png              # Official corporate logo asset
-├── IMFLogo.png             # International Maritime Federation membership emblem
-├── maccia.jpg              # MACCIA accreditation emblem
-├── css/
-│   └── style.css           # Modularized external stylesheet
-├── js/
-│   └── main.js             # Modularized interactive JavaScript
-└── image/                  # Static web images & membership assets
-    ├── logo11.png          # Corporate logo
-    ├── crew-mobilization-bulk-carrier-2026.webp # Crew mobilization portrait
-    ├── gallery-*.*         # International delegations & events (PMO conference & dinner)
-    ├── Capt-Ujjawal-Chaudhary.png # Managing Director portrait
-    ├── maccia.jpg          # MACCIA accreditation badge
-    └── IMFLogo.png         # International Maritime Federation badge
+Seaandseas/
+├── README.md / .env.example # Documentation and configuration template
+├── .htaccess / web.config  # Apache and IIS routing/access controls
+├── index.html              # Homepage and quick CV intake
+├── apply.html / admin.html # Applicant wizard and staff portal
+├── submit_application.php  # Full application processing and quick CV intake
+├── api.php                 # Staff authentication, search, review and downloads
+├── download_application.php # Expiring applicant Word download
+├── NEW-APPLICATION-FORMAT-1.docx # Pinned original application template
+├── css/                    # Homepage and applicant styles
+├── js/                     # Browser code, shared validation and field schema
+├── image/                  # Photography, logos and membership assets
+├── includes/               # PHP storage, validation, Word generation and mail
+├── phpmailer/              # Existing mail library
+├── migrations/             # Additive SQLite schema
+├── scripts/                # Development, packaging and CLI operations tools
+├── tests/                  # Isolated synthetic integration tests
+├── docs/                   # Field mapping, setup and production release guide
+├── releases/               # Generated ZIP/manifest/settings example (ignored)
+└── test-output/            # Synthetic QA Word files (ignored; never deploy)
 ```
+
+Production database, CVs, generated documents and staff sessions belong in `APPLICATION_PRIVATE_DIR`, **outside this project and every public document root**. Root logos/images are also included in the production package. `lib/` and the ignored `server.js` are historical Node prototypes, not production handlers. Existing legacy uploads/roster files must remain protected during an upgrade.
 
 ---
 
@@ -64,7 +66,7 @@ SeaAndSeas_Website/
 
 The complete `/apply` workflow runs on **PHP 8.2+**, with a private PDO SQLite database and table-mapped DOCX generation from `NEW-APPLICATION-FORMAT-1.docx`. Production supports PHP-only Plesk hosting; Node is used only for development tests. The older Node prototype is not the deployment entry point.
 
-Configure `APP_ENV`, `APPLICATION_PRIVATE_DIR`, `ADMIN_USERNAME` and `ADMIN_PASSWORD_HASH` as described in the [setup and end-to-end testing guide](docs/application-setup.md). Private storage must be outside the web document root. There is no default staff password.
+Configure `APP_ENV=local`, `APPLICATION_PRIVATE_DIR`, `ADMIN_USERNAME` and `ADMIN_PASSWORD_HASH` as described in the [setup and end-to-end testing guide](docs/application-setup.md). Private storage must be outside the web document root. There is no default staff password. For missing local settings, `php scripts/configure-local-admin.php --local` creates only the missing settings and prints a generated password once; it preserves existing credentials/mail settings and refuses explicitly non-local configuration. Never run that setup script on production.
 
 ```bash
 php scripts/application-preflight.php
@@ -82,11 +84,76 @@ npm ci
 npm run lint
 npm test
 npm run build
+npm run package:production
 ```
 
-These are development checks, with isolated synthetic PHP integration tests. The vanilla website has no TypeScript compilation or asset bundling step. No new production package was added. The [setup guide](docs/application-setup.md) covers all changed files, the additive database migration, PHP extensions/environment, Linux Apache/nginx and Windows IIS routing, scheduled recovery, private backups, manual Word checks and remaining limitations. Server PDF generation is not included; completed DOCX files can be exported from Word.
+These are development checks, with isolated synthetic PHP integration tests. Tests require permission to bind a localhost PHP server, use temporary private storage, send no mail, and must run under a non-root POSIX account for the storage-permission failure checks. The vanilla website has no TypeScript compilation or asset bundling step. Node dependencies are development tools and are not required on the production host.
 
-For Plesk, upload the PHP/static deployment files identified in that guide, configure private storage and secrets separately, and enable HTTPS. Keep `.env`, database files, uploaded/generated dossiers, deployment ZIPs and diagnostic tools out of public access. Do not deploy `server.js`, Node dependencies or test artifacts. Verify the host OS and routing before deployment. A static-only server cannot process applications.
+Verified locally on **7 October 2026**, using PHP **8.5.11** on macOS: **45 integration checks passed**; syntax checks passed for **17 PHP and 11 JavaScript files**; static build checks passed for **465 scalar fields**, **six repeat groups**, and the pinned Word template. Tests cover data mapping, duplicate retries, staff authorization/CSRF, private routes, expiry, failure recovery and preservation of the template's declarations and non-document ZIP parts. The added IIS access-rule regression checks the deny expression; it does not replace an integration check on the Windows host.
+
+`npm run package:production` runs the build checks and writes this release's files:
+
+```text
+releases/seaandseas-production-20261007.zip
+releases/seaandseas-production-20261007.manifest.json
+releases/production-settings.example
+```
+
+The ZIP contains 48 deployment files: public assets, PHP handlers/libraries, the original Word template, migration, routing and three CLI operations scripts. The manifest records each file's SHA-256 and the source commit, including whether working-tree changes are present. Secrets, `.env`, databases, applicant files, the legacy roster, Node prototypes/dependencies, tests, QA output and `test-mail.php` are excluded. Keep the ZIP/manifest/settings example outside public storage and configure server secrets separately. Do not use the older September deployment ZIPs for this release. The packaging command currently uses the fixed `20261007` release filename; update it deliberately for a later release.
+
+## Confirmed PleskWin configuration and release readiness
+
+The PHP Settings screenshot and phpinfo PDF supplied on **7 October 2026** confirm Windows Server 2022, Microsoft IIS 10, PleskWin, and PHP **8.5.11** using CGI/FastCGI. The document root is `D:/Inetpub/vhosts/seasshipping.com/httpdocs`.
+
+| Setting | Captured server value | Application requirement / action |
+| --- | --- | --- |
+| PHP | 8.5.11, CGI/FastCGI | Meets the minimum PHP 8.2 requirement; verify using the site's actual handler and CLI |
+| PDO SQLite | Enabled; PDO drivers include `sqlite` | Required; available |
+| DOM, ZIP, fileinfo, mbstring | Enabled | Required; all available |
+| `memory_limit` | `128M` | At least `128M`; captured value meets the minimum |
+| `max_execution_time` / `max_input_time` | `60` / `60` seconds | Captured values match the deployment recommendation |
+| `upload_max_filesize` | `2M` | **Change to `10M`** for the advertised CV size |
+| `post_max_size` | `8M` | **Change to `12M`** to allow the CV plus form/multipart overhead |
+| `max_input_vars` | `1000` | **Change to `3000`** for the complete application form |
+| `open_basedir` | Subscription root `D:/Inetpub/vhosts/seasshipping.com/` and `C:/Windows/Temp/` | Covers the proposed sibling private directory below; preserve the restrictions |
+| Error handling | Display errors off; log errors on | Keep errors private and inspect Plesk Logs when diagnosing failures |
+
+Set the three limits in the domain's PHP Settings and click **Apply**. If a field is unavailable, ask the host to set it for the site's handler. Reopen **View the phpinfo() page** and verify the **Local Value** column. The captured PDF predates these changes; it does not prove they have been applied.
+
+**Current readiness: local code checks pass; production acceptance is still blocked.** On 7 October, eight public assets matched the 6 October release after normalizing Windows line endings. A subsequent HTTP status recheck found `/`, `/apply` and `/admin` returning 200, but `/api.php?route=admin/me` still returned **503** and a HEAD request to `/applications_roster.json` returned **200**. Only headers were checked for private paths; no applicant records were downloaded. The reviewed local `web.config` blocks the legacy roster and QA directories, but that protection has not been verified on production. `/.env` and the original Word template returned 403.
+
+The required extensions are present in the supplied PDF. It does **not** confirm the application's effective `.env`, private-folder existence/NTFS permissions, database initialization, staff login or completed application generation. The upload-limit corrections alone do not resolve the GET staff API's 503 response. Run server preflight and inspect private error logs to identify the cause before accepting the release.
+
+## Production configuration and delivery
+
+For a new production installation, create a private sibling folder outside `httpdocs` and grant only the required site/hosting identities access through NTFS ACLs. This proposed path is inside the captured `open_basedir` allowance:
+
+```dotenv
+APP_ENV=production
+APPLICATION_PRIVATE_DIR=D:/Inetpub/vhosts/seasshipping.com/seaandseas-private
+APPLICATION_EMAIL_ENABLED=false
+```
+
+For an existing application database, **retain its current valid private storage path**; changing it without migrating the database and files would make existing records disappear from the roster. Never deploy a local macOS `/tmp` or `/Users/...` path to Windows.
+
+Configure `ADMIN_USERNAME` and a real PHP `password_hash` value for `ADMIN_PASSWORD_HASH` privately. Preserve existing staff credentials and SMTP settings; do not copy placeholders over working settings. Prefer a private `.env` above `httpdocs`; the loader uses the first readable file in `httpdocs/.env`, `httpdocs/includes/.env`, then the parent `.env`, so an existing file in the document root must be merged or deliberately migrated. Process environment variables take precedence. See [application setup](docs/application-setup.md) for password-hash creation and permissions.
+
+1. Make a private Plesk backup of the live site/settings and a consistent backup of the application database **with** its files. SQLite WAL requires an online backup or stopped writes; copying just a live `.sqlite` file is insufficient.
+2. Apply and verify the PHP limits above; confirm IIS URL Rewrite is installed/enabled and the site's PHP account can read configuration and write private storage.
+3. Run `php scripts/application-preflight.php` from the release directory using the site's PHP binary, account and production configuration. Use private staging before switching if available, or a controlled deployment window with a Plesk PHP scheduled task. Success must report private storage/additive migration and template/extension checks as OK. Preflight initializes the database; it does not verify all web-handler limits, IIS routing or the browser workflow.
+4. Extract the reviewed release ZIP into the actual `httpdocs` root, overwriting release code/assets while preserving server configuration and runtime records. Deploy the corrected `web.config`. Keep archives, manifests, diagnostic tools and test files out of public storage. Production does not run `server.js`, `npm start` or the PHP development server.
+5. Schedule `scripts/recover-applications.php` hourly with the same PHP/account/configuration. If reference-only staff notification emails are needed, verify SMTP/recipient settings privately, set `APPLICATION_EMAIL_ENABLED=true`, and schedule `scripts/send-application-notifications.php` every five minutes. The worker sends real mail when enabled.
+6. Complete the live acceptance checks below. If they fail, follow the [release and rollback guide](docs/production-release-20261007.md), preserving new applications and keeping the roster deny rule in place.
+
+### Live acceptance checks
+
+- Homepage, `/apply` and `/admin` load through HTTPS. Applicant/staff assets load after a hard refresh.
+- An unauthenticated request to `/api.php?route=admin/me` returns **401**, rather than 503. Staff login persists, searches work, and logout prevents private API/download access.
+- HEAD/status checks to `/.env`, `/applications_roster.json`, `/NEW-APPLICATION-FORMAT-1.docx`, `/includes/application_bootstrap.php`, `/data/`, `/storage/`, `/uploads/`, `/test-output/`, `/scratch/` and `/test-mail.php` return **403 or 404**. Do not download private content to perform these checks.
+- With notifications disabled for the smoke test, submit a clearly marked synthetic application, confirm its real application number, download/open the completed Word document, and verify the dossier in the staff portal. Keep deployment QA identifiable and preserve real records.
+- Verify quick CV intake separately with a designated test recipient; it uses the mail workflow and sends actual email.
+
+The [setup guide](docs/application-setup.md) covers mapping, recovery, notifications, private backups and alternative Apache/nginx hosting. Server PDF generation is not included; staff can export the completed DOCX from Word. Windows NTFS permissions and the full production workflow remain unverified until the host checks above succeed. Passing local checks or pushing source to Git does not configure or deploy Plesk.
 
 ---
 

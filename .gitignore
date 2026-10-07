@@ -28,3 +28,4 @@ storage/applications/*
 scratch/
 test-output/
 applications_archive/
+releases/

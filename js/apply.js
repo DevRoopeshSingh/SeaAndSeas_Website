@@ -52,7 +52,7 @@
      ========================================================================== */
   document.addEventListener('DOMContentLoaded', async () => {
     try {
-      const response = await fetch('/js/application-schema.json');
+      const response = await fetch('/js/application-schema.json?v=20261007');
       if (!response.ok) throw new Error('Schema unavailable');
       schema = await response.json();
       Object.entries(schema.fields).forEach(([name, spec]) => {

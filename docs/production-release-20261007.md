@@ -1,0 +1,40 @@
+# Production delivery — 7 October 2026
+
+This release contains the 6 October application changes from `e14c123` and `ad1da7e`, plus the deployment review fixes in the working tree: deny the legacy roster and QA directories, refresh cached applicant assets, and make the declaration test read the tracked template directly.
+
+## Review findings
+
+Production HTTP headers identify Microsoft IIS 10 and PleskWin. Eight checked public assets (the homepage, applicant/staff pages, applicant/staff JavaScript, validation, schema and applicant CSS) match the 6 October release after normalizing Windows line endings. Yesterday's public code is therefore already uploaded. The unauthenticated staff API returned HTTP 503 with `Application service unavailable. Check server configuration.`; server access is needed to identify the underlying runtime/storage error. A HEAD request to `/applications_roster.json` returned HTTP 200; no applicant records were downloaded. The updated IIS rule denies that file. Confirm the actual server configuration before publishing; successful local tests do not verify the hosting runtime.
+
+The reviewed working tree passes 45 isolated integration checks, syntax checks for 17 PHP and 11 JavaScript files, and static build checks for 465 scalar fields, six repeat groups and the pinned template. The 48-file ZIP was reopened and checked for archive integrity, per-file manifest hashes, template fingerprint, valid IIS XML, and exclusion of secrets/runtime data. No production writes were performed during this review.
+
+The supplied Plesk phpinfo PDF confirms PHP 8.5.11 via CGI/FastCGI on Windows Server 2022, with PDO SQLite, DOM, ZIP, fileinfo and mbstring enabled. Memory is 128M and execution/input time limits are 60 seconds. Captured upload/POST/input-variable limits are 2M, 8M and 1000; change them to 10M, 12M and 3000, then verify effective Local Values. The document root is `D:/Inetpub/vhosts/seasshipping.com/httpdocs`; `open_basedir` permits its subscription parent and `C:/Windows/Temp/`. A sibling private folder under that subscription is permitted by this PHP restriction, but NTFS access and the application's actual configuration remain unverified. A subsequent HEAD status check still returned 503 for the staff API and 200 for the legacy roster. See the [README](../README.md#confirmed-pleskwin-configuration-and-release-readiness) for the current acceptance conditions.
+
+## Build the upload
+
+Run `npm run package:production`. It runs the static build checks, then creates `releases/seaandseas-production-20261007.zip` and a SHA-256 manifest beside it. The ZIP contains only the public assets, PHP handlers/libraries, routing, pinned Word template, SQL migration, three CLI operations scripts, and upload-directory protections. The manifest records hashes for every file and whether the working tree contains changes beyond its source commit.
+
+The ZIP excludes `.env`, credentials, databases, applicant files, the legacy roster, diagnostics, local admin setup, Node prototypes, dependencies, tests and QA output. Configure the separately supplied `production-settings.example` privately; never replace existing SMTP credentials with example values. Do not use the older September deployment archives for this release.
+
+## PleskWin delivery
+
+1. Use Plesk Backup Manager to create a private backup of the current website and settings. Back up existing private application storage consistently with its database and files, as described in [application setup](application-setup.md). Record the existing private storage path so the upgrade preserves existing records.
+2. Confirm URL Rewrite is enabled and unlocked, PHP is 8.2 or newer, and PDO SQLite, DOM, ZIP, fileinfo and mbstring are enabled. Configure PHP upload limits: `upload_max_filesize=10M`, `post_max_size=12M`, `max_input_vars=3000`, `memory_limit=128M` or higher, and `max_execution_time=60` or higher. Ensure `open_basedir` includes private storage and the upload temporary directory.
+3. Preserve the existing valid private storage path, or for a new installation create `D:/Inetpub/vhosts/seasshipping.com/seaandseas-private`, outside `httpdocs` and every other served root. Grant the site's PHP identity access with NTFS ACLs. Preserve existing staff credentials where configured; otherwise configure the selected staff username and a PHP-generated password hash privately. Use `APP_ENV=production` and HTTPS. Never deploy the local `.env` or a temporary local storage path.
+4. If CLI access is available, use a private staging copy and the site's PHP binary to run `scripts/application-preflight.php` with the production configuration before switching the website. Otherwise use a controlled deployment window and run the preflight immediately after extracting through a Plesk PHP scheduled task using the site account. A failed preflight blocks release acceptance and requires restoring the prior website until configuration is corrected.
+5. Upload the ZIP outside public storage where the panel permits, then extract its contents into the site's actual document root, overwriting only release code/assets. Retain `.env`, existing runtime directories and applicant records. Replace `web.config` with this release's version. Keep the ZIP, manifest and settings example outside the public document root.
+6. Schedule `scripts/recover-applications.php` hourly with the same PHP runtime, account and configuration. If email notifications are required, configure `APPLICATION_EMAIL_ENABLED=true` and run `scripts/send-application-notifications.php` every five minutes. Confirm the recipient privately; the worker sends real mail when enabled.
+
+## Acceptance checks
+
+- Homepage, `/apply` and `/admin` respond normally. Hard-refresh the applicant and staff pages.
+- `/.env`, `/applications_roster.json`, `/NEW-APPLICATION-FORMAT-1.docx`, `/includes/application_bootstrap.php`, `/data/`, `/storage/`, `/uploads/`, `/test-output/`, `/scratch/` and `/test-mail.php` return 403 or 404. Check headers/status without downloading private content. IIS custom error pages must retain the correct HTTP failure status.
+- `/api.php?route=admin/me` returns 401 before login, rather than a configuration error. Staff login persists, roster access works, and sign-out prevents private access.
+- Submit one clearly marked synthetic application with notifications disabled during the smoke test, verify its application number, download its Word file, inspect it in Word and confirm it appears in the staff portal. Keep it marked as deployment QA; do not delete real records.
+- Verify existing quick-CV intake separately using a designated test recipient, because it sends email.
+
+## Rollback
+
+Restore the prior code and hosting settings from the private backup if routing or processing fails. Preserve current private application storage and any submissions received after deployment; the additive application migration does not delete older records. Keep the corrected roster access deny in place during rollback, or ask the host to deny that path independently. Recheck homepage and the prior intake after rollback. Do not restore an older database over newly received applications.
+
+Production delivery is complete only after the server preflight and acceptance checks pass. The ZIP alone does not configure hosting or publish the release.
