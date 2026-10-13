@@ -406,22 +406,22 @@ All coordinates are zero-based physical OOXML cells. Template SHA-256: 7425c5d4c
 | other_ab_eng_doi | data.other_ab_eng_doi | Table 6, row 27, cell 2 |
 | other_ab_eng_doe | data.other_ab_eng_doe | Table 6, row 27, cell 3 |
 | other_ab_eng_by | data.other_ab_eng_by | Table 6, row 27, cell 4 |
-| stcw_ecdis_no | data.stcw_ecdis_no | Table 6, row 14, cell 1 (combined value) |
-| stcw_ecdis_doi | data.stcw_ecdis_doi | Table 6, row 14, cell 2 (combined value) |
-| stcw_ecdis_doe | data.stcw_ecdis_doe | Table 6, row 14, cell 3 (combined value) |
-| stcw_ecdis_by | data.stcw_ecdis_by | Table 6, row 14, cell 4 (combined value) |
-| stcw_gmdss_no | data.stcw_gmdss_no | Table 6, row 8, cell 1 (combined value) |
-| stcw_gmdss_doi | data.stcw_gmdss_doi | Table 6, row 8, cell 2 (combined value) |
-| stcw_gmdss_doe | data.stcw_gmdss_doe | Table 6, row 8, cell 3 (combined value) |
-| stcw_gmdss_by | data.stcw_gmdss_by | Table 6, row 8, cell 4 (combined value) |
-| stcw_hv_no | data.stcw_hv_no | Table 6, row 23, cell 1 (combined value) |
-| stcw_hv_doi | data.stcw_hv_doi | Table 6, row 23, cell 2 (combined value) |
-| stcw_hv_doe | data.stcw_hv_doe | Table 6, row 23, cell 3 (combined value) |
-| stcw_hv_by | data.stcw_hv_by | Table 6, row 23, cell 4 (combined value) |
-| stcw_offshore_no | data.stcw_offshore_no | Legacy combined offshore certificate row in table 6 |
-| stcw_offshore_doi | data.stcw_offshore_doi | Legacy combined offshore certificate row in table 6 |
-| stcw_offshore_doe | data.stcw_offshore_doe | Legacy combined offshore certificate row in table 6 |
-| stcw_offshore_by | data.stcw_offshore_by | Legacy combined offshore certificate row in table 6 |
+| stcw_ecdis_no | data.stcw_ecdis_no | Table 6, separate appended ECDIS (key STCW) row, cell 1 (included when any row field is supplied) |
+| stcw_ecdis_doi | data.stcw_ecdis_doi | Table 6, separate appended ECDIS (key STCW) row, cell 2 (included when any row field is supplied) |
+| stcw_ecdis_doe | data.stcw_ecdis_doe | Table 6, separate appended ECDIS (key STCW) row, cell 3 (included when any row field is supplied) |
+| stcw_ecdis_by | data.stcw_ecdis_by | Table 6, separate appended ECDIS (key STCW) row, cell 4 (included when any row field is supplied) |
+| stcw_gmdss_no | data.stcw_gmdss_no | Table 6, separate appended GMDSS / GOC (key STCW) row, cell 1 (included when any row field is supplied) |
+| stcw_gmdss_doi | data.stcw_gmdss_doi | Table 6, separate appended GMDSS / GOC (key STCW) row, cell 2 (included when any row field is supplied) |
+| stcw_gmdss_doe | data.stcw_gmdss_doe | Table 6, separate appended GMDSS / GOC (key STCW) row, cell 3 (included when any row field is supplied) |
+| stcw_gmdss_by | data.stcw_gmdss_by | Table 6, separate appended GMDSS / GOC (key STCW) row, cell 4 (included when any row field is supplied) |
+| stcw_hv_no | data.stcw_hv_no | Table 6, separate appended High Voltage (key STCW) row, cell 1 (included when any row field is supplied) |
+| stcw_hv_doi | data.stcw_hv_doi | Table 6, separate appended High Voltage (key STCW) row, cell 2 (included when any row field is supplied) |
+| stcw_hv_doe | data.stcw_hv_doe | Table 6, separate appended High Voltage (key STCW) row, cell 3 (included when any row field is supplied) |
+| stcw_hv_by | data.stcw_hv_by | Table 6, separate appended High Voltage (key STCW) row, cell 4 (included when any row field is supplied) |
+| stcw_offshore_no | data.stcw_offshore_no | Table 6, separate appended Combined offshore (as submitted) row, cell 1 (included when any row field is supplied) |
+| stcw_offshore_doi | data.stcw_offshore_doi | Table 6, separate appended Combined offshore (as submitted) row, cell 2 (included when any row field is supplied) |
+| stcw_offshore_doe | data.stcw_offshore_doe | Table 6, separate appended Combined offshore (as submitted) row, cell 3 (included when any row field is supplied) |
+| stcw_offshore_by | data.stcw_offshore_by | Table 6, separate appended Combined offshore (as submitted) row, cell 4 (included when any row field is supplied) |
 | indos_number | data.indos_number | Table 5, row 14, cell 1 |
 | indos_issued_by | data.indos_issued_by | Table 5, row 14, cell 2 |
 | deck_bulk_cargo | data.deck_bulk_cargo | Table 8, row 2, cell 1 |
@@ -552,6 +552,17 @@ Maximum 20 entries. Fill 0 original rows; clone existing row formatting for over
 | certificate_doi_n | data.certificates_json[n].certificate_doi | Table 6, row 28 + n, cell 2 |
 | certificate_doe_n | data.certificates_json[n].certificate_doe | Table 6, row 28 + n, cell 3 |
 | certificate_by_n | data.certificates_json[n].certificate_by | Table 6, row 28 + n, cell 4 |
+
+## Separate scalar certificate rows
+
+After the applicant's additional certificate records, append one styled row for each populated group below. Include a row when any of its number, issue date, expiry date or issuer fields is supplied; preserve blank cells within that row. These four rows are additional to the maximum 20 applicant-added certificates. Fixed other-flag course rows remain separate. The table title and column labels repeat on continuation pages.
+
+| DOCX row label | Online fields, in cells 1 to 4 |
+|---|---|
+| ECDIS (key STCW) | stcw_ecdis_no, stcw_ecdis_doi, stcw_ecdis_doe, stcw_ecdis_by |
+| GMDSS / GOC (key STCW) | stcw_gmdss_no, stcw_gmdss_doi, stcw_gmdss_doe, stcw_gmdss_by |
+| High Voltage (key STCW) | stcw_hv_no, stcw_hv_doi, stcw_hv_doe, stcw_hv_by |
+| Combined offshore (as submitted) | stcw_offshore_no, stcw_offshore_doi, stcw_offshore_doe, stcw_offshore_by |
 
 ## Preserved office fields
 

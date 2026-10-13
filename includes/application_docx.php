@@ -48,6 +48,13 @@ function app_generate_docx(array $data,string $ref,string $output): void {
         $tables=iterator_to_array($doc->getElementsByTagNameNS(APP_WORD_NS,'tbl'));
         if(count($tables)!==12)throw new RuntimeException('Unexpected template tables.');
         $matrix=[];foreach($tables as$t)$matrix[]=array_map(fn($r)=>app_children($r,'tc'),app_children($t,'tr'));
+        // This table has one consistent column layout, including appended certificates.
+        // Repeat its title and column labels when additional rows span another page.
+        foreach(array_slice(app_children($tables[6],'tr'),0,2)as$header){
+            $pr=app_children($header,'trPr')[0]??$doc->createElementNS(APP_WORD_NS,'w:trPr');
+            if(!$pr->parentNode)$header->insertBefore($pr,$header->firstChild);
+            if(!app_children($pr,'tblHeader'))$pr->appendChild($doc->createElementNS(APP_WORD_NS,'w:tblHeader'));
+        }
         // The supplied U.S. visa cells are vertical-merge continuations, which Word hides.
         // Split only these four data/header cells so the mapped values are visible.
         foreach([3,4]as$r)for($c=0;$c<4;$c++)foreach(iterator_to_array($matrix[3][$r][$c]->getElementsByTagNameNS(APP_WORD_NS,'vMerge'))as$merge)$merge->parentNode->removeChild($merge);
@@ -72,8 +79,13 @@ function app_generate_docx(array $data,string $ref,string $output): void {
         // Original mappings are resolved before any row insertion shifts indices.
         foreach($schema['repeats']as$group=>$spec){
             $entries=$data[$spec['key']]??[];
-            if($group==='certificates' && !empty($data['stcw_offshore_no']))$entries[]=['certificate_name'=>'Combined offshore (as submitted)','certificate_no'=>$data['stcw_offshore_no'],'certificate_doi'=>$data['stcw_offshore_doi'],'certificate_doe'=>$data['stcw_offshore_doe'],'certificate_by'=>$data['stcw_offshore_by']];
-            if(count($entries)>$spec['max']+($group==='certificates'?1:0))throw new RuntimeException('Too many repeated records.');
+            if(count($entries)>$spec['max'])throw new RuntimeException('Too many repeated records.');
+            if($group==='certificates')foreach($schema['derivedCertificateRows']as$record){
+                $recordValues=array_map(fn($key)=>$data[$key]??'', $record['fields']);
+                if(count(array_filter($recordValues,fn($value)=>$value!==''))===0)continue;
+                // Each certificate keeps its own blank cells so sparse dates retain their association.
+                $entries[]=array_combine($spec['fields'],[$record['label'],...$recordValues]);
+            }
             $table=$tables[$spec['table']];$rows=app_children($table,'tr');
             $sample=$rows[$spec['capacity']?$spec['start']+$spec['capacity']-1:$spec['start']-1];
             $anchor=$rows[$spec['start']+$spec['capacity']]??null;

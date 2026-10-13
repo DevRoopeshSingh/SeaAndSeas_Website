@@ -1087,6 +1087,10 @@ input[type="date"].form-input::-webkit-calendar-picker-indicator:hover {
 }
 
 /* ---------------- SUCCESS SUBMISSION VIEW ---------------- */
+.application-print-copy {
+  display: none;
+}
+
 .submission-success-card {
   text-align: center;
   padding: 48px 24px;
@@ -1244,8 +1248,22 @@ footer .wrap {
     line-height: 1.3;
   }
 
-  .top-bar, .nav, .apply-hero, .draft-bar, .wizard-nav-wrap, .mobile-stepper, .wizard-footer, footer, .btn, .btn-add-row, .btn-remove-row, .file-upload-box {
+  .top-bar, .nav, .apply-hero, .draft-bar, .wizard-nav-wrap, .mobile-stepper, .wizard-footer, footer, .btn, .btn-add-row, .btn-remove-row, .file-upload-box, .application-upload, .application-success-view {
     display: none !important;
+  }
+
+  .application-print-copy {
+    display: block !important;
+    border: 0 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    min-width: 0;
+  }
+
+  .application-print-copy :disabled {
+    opacity: 1 !important;
+    -webkit-text-fill-color: #000;
+    color: #000 !important;
   }
 
   .apply-container {

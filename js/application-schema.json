@@ -5799,13 +5799,7 @@
       "max": 120,
       "required": false,
       "db": "data.stcw_ecdis_no",
-      "cell": [
-        6,
-        14,
-        1
-      ],
-      "prefix": "",
-      "append": true
+      "special": "Table 6, separate appended ECDIS (key STCW) row, cell 1 (included when any row field is supplied)"
     },
     "stcw_ecdis_doi": {
       "label": "stcw ecdis doi",
@@ -5814,13 +5808,7 @@
       "max": 120,
       "required": false,
       "db": "data.stcw_ecdis_doi",
-      "cell": [
-        6,
-        14,
-        2
-      ],
-      "prefix": "",
-      "append": true
+      "special": "Table 6, separate appended ECDIS (key STCW) row, cell 2 (included when any row field is supplied)"
     },
     "stcw_ecdis_doe": {
       "label": "stcw ecdis doe",
@@ -5829,13 +5817,7 @@
       "max": 120,
       "required": false,
       "db": "data.stcw_ecdis_doe",
-      "cell": [
-        6,
-        14,
-        3
-      ],
-      "prefix": "",
-      "append": true
+      "special": "Table 6, separate appended ECDIS (key STCW) row, cell 3 (included when any row field is supplied)"
     },
     "stcw_ecdis_by": {
       "label": "stcw ecdis by",
@@ -5844,13 +5826,7 @@
       "max": 120,
       "required": false,
       "db": "data.stcw_ecdis_by",
-      "cell": [
-        6,
-        14,
-        4
-      ],
-      "prefix": "",
-      "append": true
+      "special": "Table 6, separate appended ECDIS (key STCW) row, cell 4 (included when any row field is supplied)"
     },
     "stcw_gmdss_no": {
       "label": "stcw gmdss no",
@@ -5859,13 +5835,7 @@
       "max": 120,
       "required": false,
       "db": "data.stcw_gmdss_no",
-      "cell": [
-        6,
-        8,
-        1
-      ],
-      "prefix": "",
-      "append": true
+      "special": "Table 6, separate appended GMDSS / GOC (key STCW) row, cell 1 (included when any row field is supplied)"
     },
     "stcw_gmdss_doi": {
       "label": "stcw gmdss doi",
@@ -5874,13 +5844,7 @@
       "max": 120,
       "required": false,
       "db": "data.stcw_gmdss_doi",
-      "cell": [
-        6,
-        8,
-        2
-      ],
-      "prefix": "",
-      "append": true
+      "special": "Table 6, separate appended GMDSS / GOC (key STCW) row, cell 2 (included when any row field is supplied)"
     },
     "stcw_gmdss_doe": {
       "label": "stcw gmdss doe",
@@ -5889,13 +5853,7 @@
       "max": 120,
       "required": false,
       "db": "data.stcw_gmdss_doe",
-      "cell": [
-        6,
-        8,
-        3
-      ],
-      "prefix": "",
-      "append": true
+      "special": "Table 6, separate appended GMDSS / GOC (key STCW) row, cell 3 (included when any row field is supplied)"
     },
     "stcw_gmdss_by": {
       "label": "stcw gmdss by",
@@ -5904,13 +5862,7 @@
       "max": 120,
       "required": false,
       "db": "data.stcw_gmdss_by",
-      "cell": [
-        6,
-        8,
-        4
-      ],
-      "prefix": "",
-      "append": true
+      "special": "Table 6, separate appended GMDSS / GOC (key STCW) row, cell 4 (included when any row field is supplied)"
     },
     "stcw_hv_no": {
       "label": "stcw hv no",
@@ -5919,13 +5871,7 @@
       "max": 120,
       "required": false,
       "db": "data.stcw_hv_no",
-      "cell": [
-        6,
-        23,
-        1
-      ],
-      "prefix": "",
-      "append": true
+      "special": "Table 6, separate appended High Voltage (key STCW) row, cell 1 (included when any row field is supplied)"
     },
     "stcw_hv_doi": {
       "label": "stcw hv doi",
@@ -5934,13 +5880,7 @@
       "max": 120,
       "required": false,
       "db": "data.stcw_hv_doi",
-      "cell": [
-        6,
-        23,
-        2
-      ],
-      "prefix": "",
-      "append": true
+      "special": "Table 6, separate appended High Voltage (key STCW) row, cell 2 (included when any row field is supplied)"
     },
     "stcw_hv_doe": {
       "label": "stcw hv doe",
@@ -5949,13 +5889,7 @@
       "max": 120,
       "required": false,
       "db": "data.stcw_hv_doe",
-      "cell": [
-        6,
-        23,
-        3
-      ],
-      "prefix": "",
-      "append": true
+      "special": "Table 6, separate appended High Voltage (key STCW) row, cell 3 (included when any row field is supplied)"
     },
     "stcw_hv_by": {
       "label": "stcw hv by",
@@ -5964,13 +5898,7 @@
       "max": 120,
       "required": false,
       "db": "data.stcw_hv_by",
-      "cell": [
-        6,
-        23,
-        4
-      ],
-      "prefix": "",
-      "append": true
+      "special": "Table 6, separate appended High Voltage (key STCW) row, cell 4 (included when any row field is supplied)"
     },
     "stcw_offshore_no": {
       "label": "stcw offshore no",
@@ -5979,7 +5907,7 @@
       "max": 120,
       "required": false,
       "db": "data.stcw_offshore_no",
-      "special": "Legacy combined offshore certificate row in table 6"
+      "special": "Table 6, separate appended Combined offshore (as submitted) row, cell 1 (included when any row field is supplied)"
     },
     "stcw_offshore_doi": {
       "label": "stcw offshore doi",
@@ -5988,7 +5916,7 @@
       "max": 120,
       "required": false,
       "db": "data.stcw_offshore_doi",
-      "special": "Legacy combined offshore certificate row in table 6"
+      "special": "Table 6, separate appended Combined offshore (as submitted) row, cell 2 (included when any row field is supplied)"
     },
     "stcw_offshore_doe": {
       "label": "stcw offshore doe",
@@ -5997,7 +5925,7 @@
       "max": 120,
       "required": false,
       "db": "data.stcw_offshore_doe",
-      "special": "Legacy combined offshore certificate row in table 6"
+      "special": "Table 6, separate appended Combined offshore (as submitted) row, cell 3 (included when any row field is supplied)"
     },
     "stcw_offshore_by": {
       "label": "stcw offshore by",
@@ -6006,7 +5934,7 @@
       "max": 120,
       "required": false,
       "db": "data.stcw_offshore_by",
-      "special": "Legacy combined offshore certificate row in table 6"
+      "special": "Table 6, separate appended Combined offshore (as submitted) row, cell 4 (included when any row field is supplied)"
     },
     "indos_number": {
       "label": "indos number",
@@ -6750,5 +6678,43 @@
         "certificate_by"
       ]
     }
-  }
+  },
+  "derivedCertificateRows": [
+    {
+      "label": "ECDIS (key STCW)",
+      "fields": [
+        "stcw_ecdis_no",
+        "stcw_ecdis_doi",
+        "stcw_ecdis_doe",
+        "stcw_ecdis_by"
+      ]
+    },
+    {
+      "label": "GMDSS / GOC (key STCW)",
+      "fields": [
+        "stcw_gmdss_no",
+        "stcw_gmdss_doi",
+        "stcw_gmdss_doe",
+        "stcw_gmdss_by"
+      ]
+    },
+    {
+      "label": "High Voltage (key STCW)",
+      "fields": [
+        "stcw_hv_no",
+        "stcw_hv_doi",
+        "stcw_hv_doe",
+        "stcw_hv_by"
+      ]
+    },
+    {
+      "label": "Combined offshore (as submitted)",
+      "fields": [
+        "stcw_offshore_no",
+        "stcw_offshore_doi",
+        "stcw_offshore_doe",
+        "stcw_offshore_by"
+      ]
+    }
+  ]
 }

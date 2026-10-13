@@ -461,6 +461,8 @@
                         <option value="Wife">Wife</option>
                         <option value="Child (M)">Child (M)</option>
                         <option value="Child (F)">Child (F)</option>
+                        <option value="Father">Father</option>
+                        <option value="Mother">Mother</option>
                       </select>
                     </td>
                     <td><input type="text" name="fam_name_1" placeholder="Name"></td>
@@ -1175,7 +1177,7 @@
             <div class="step-header">
               <div>
                 <h2>Section 5: Previous Sea Service (Last 10 Years)</h2>
-                <p>Starting from your most recent vessel sign-off. The system automatically computes contract durations (Months &amp; Days).</p>
+                <p>Starting from your most recent vessel sign-off. Leave this section blank if you have no previous sea service. Complete owner, vessel, rank and both dates for each record you enter.</p>
               </div>
               <span class="step-badge">Step 5 of 7</span>
             </div>
@@ -1204,8 +1206,8 @@
                 <tbody id="seaServiceTableBody">
                   <tr class="sea-row">
                     <td style="text-align:center;font-weight:700;">1</td>
-                    <td><input type="text" name="sea_owner_1" placeholder="Owner / Manager" required></td>
-                    <td><input type="text" name="sea_vessel_1" placeholder="Vessel Name" required></td>
+                    <td><input type="text" name="sea_owner_1" placeholder="Owner / Manager"></td>
+                    <td><input type="text" name="sea_vessel_1" placeholder="Vessel Name"></td>
                     <td><input type="text" name="sea_built_1" placeholder="Year" style="width:65px;"></td>
                     <td>
                       <select name="sea_type_1" style="min-width:110px;">
@@ -1224,7 +1226,7 @@
                     <td><input type="text" name="sea_dwt_1" placeholder="DWT" style="width:75px;"></td>
                     <td><input type="text" name="sea_engine_1" placeholder="e.g. MAN B&amp;W" style="min-width:90px;"></td>
                     <td><input type="text" name="sea_bhp_1" placeholder="BHP" style="width:70px;"></td>
-                    <td><input type="text" name="sea_rank_1" placeholder="Rank" style="min-width:80px;" required></td>
+                    <td><input type="text" name="sea_rank_1" placeholder="Rank" style="min-width:80px;"></td>
                     <td><input type="date" name="sea_from_1" class="sea-date-from"></td>
                     <td><input type="date" name="sea_to_1" class="sea-date-to"></td>
                     <td><input type="text" name="sea_total_1" class="sea-duration-calc" placeholder="MM/DD" readonly style="width:70px;background:#f8fafc;font-weight:600;"></td>
@@ -1522,8 +1524,8 @@
             </div>
 
             <!-- CV Upload -->
-            <div class="form-section-title">4. Curriculum Vitae &amp; Document Upload</div>
-            <div class="form-group">
+            <div class="form-section-title application-upload">4. Curriculum Vitae &amp; Document Upload</div>
+            <div class="form-group application-upload">
               <label for="cvFile">Attached Seafarer CV / Resume (PDF / DOC / DOCX) <span class="req">*</span> <span class="hint">Max 10MB</span></label>
               <label class="file-upload-box" id="fileDropBox" for="cvFile" tabindex="0" role="button" aria-label="Upload CV file in PDF or DOCX format">
                 <input type="file" id="cvFile" name="cv_file" style="display:none;" accept=".pdf,.doc,.docx" required>

@@ -1,8 +1,21 @@
 /* Shared field rules; PHP independently enforces the same schema on submission. */
 (function(root){
   function date(v){return /^\d{4}-\d{2}-\d{2}$/.test(v)&&!isNaN(Date.parse(v))&&new Date(v).toISOString().slice(0,10)===v&&v>='1900-01-01'&&v<='2200-12-31';}
+  function text(value){return String(value??'').trim();}
+  function seaDuration(from,to){
+    if(!date(from)||!date(to)||from>to)return '';
+    const [fromYear,fromMonth,fromDay]=from.split('-').map(Number);
+    const [toYear,toMonth,toDay]=to.split('-').map(Number);
+    let months=(toYear-fromYear)*12+toMonth-fromMonth;
+    let days=toDay-fromDay;
+    let borrowMonth=toMonth-1;
+    // PHP DateTime::diff borrows as many preceding calendar months as needed.
+    // UTC calendar arithmetic keeps this independent of browser time zone/DST.
+    while(days<0){days+=new Date(Date.UTC(toYear,borrowMonth,0)).getUTCDate();borrowMonth--;months--;}
+    return months+'M '+days+'D';
+  }
   function error(value,spec){
-    const v=String(value||'').trim();
+    const v=text(value);
     if(!v)return spec.required?'This field is required.':'';
     if([...v].length>spec.max)return 'Use no more than '+spec.max+' characters.';
     if(spec.enum&&!spec.enum.includes(v))return 'Choose a listed answer.';
@@ -20,6 +33,7 @@
     return valid?'':'Enter a valid '+spec.label+'.';
   }
   function validate(data,schema,step){
+    data=Object.fromEntries(Object.entries(data).map(([key,value])=>[key,typeof value==='string'?text(value):value]));
     const errors={};const today=new Date().toLocaleDateString('en-CA',{timeZone:'Asia/Kolkata'});
     for(const[k,s]of Object.entries(schema.fields)){
       if(step&&s.step!==step)continue;
@@ -34,6 +48,8 @@
       let entries;try{entries=typeof data[s.key]==='string'?JSON.parse(data[s.key]):data[s.key]||[];}catch{entries=null;}
       if(!Array.isArray(entries)||entries.length>s.max){errors[s.key]='Enter up to '+s.max+' valid records.';continue;}
       entries.forEach((row,i)=>{
+        if(!row||typeof row!=='object'||Array.isArray(row)){errors[s.key+'.'+i]='Enter a valid record.';return;}
+        row=Object.fromEntries(s.fields.map(key=>[key,text(row[key])]));
         const required=s.required||{family:['fam_rel','fam_name'],education:['edu_school','edu_degree'],visas:['visa_name'],certificates:['certificate_name','certificate_no'],sea_service:['sea_owner','sea_vessel','sea_rank','sea_from','sea_to']}[group];
         for(const k of s.fields){const type=/_(doi|doe|dob|anniv|from|to)$/.test(k)?'date':/^sea_(built|grt|dwt|bhp)$/.test(k)?'integer':'text';const message=error(row[k],{label:k.replaceAll('_',' '),type,max:120,required:required.includes(k),min:k==='sea_built'?1800:0,maxNumber:k==='sea_built'?new Date().getFullYear():10000000});if(message)errors[s.key+'.'+i+'.'+k]=message;}
         for(const[a,b]of[['fam_doi','fam_doe'],['edu_from','edu_to'],['visa_doi','visa_doe'],['certificate_doi','certificate_doe'],['licence_doi','licence_doe'],['sea_from','sea_to']])if(row[a]&&row[b]&&row[a]>row[b])errors[s.key+'.'+i+'.'+b]='End/expiry must be after start/issue.';
@@ -45,6 +61,6 @@
     if(!step||step===7)if(data.nri_account_no)for(const k of['nri_account_type','nri_holder_name','nri_bank_name','nri_ifsc_swift'])if(!data[k])errors[k]='Complete NRI account details.';
     return errors;
   }
-  root.ApplicationValidation={error,validate};
+  root.ApplicationValidation={error,validate,seaDuration};
   if(typeof module!=='undefined')module.exports=root.ApplicationValidation;
 })(typeof window==='undefined'?globalThis:window);

@@ -9,6 +9,7 @@
   try { localStorage.removeItem('seaandseas_admin_token'); } catch { /* Staff authentication uses server sessions. */ }
   let csrf = '';
   let pageOffset = 0;
+  let rosterRequest = 0;
 
   // Call PHP directly so staff access also works without /api rewrite rules.
   function apiUrl(route, params = new URLSearchParams()) {
@@ -149,6 +150,13 @@
   }
 
   function showLogin() {
+    csrf = '';
+    rosterRequest++;
+    dossierModal.style.display = 'none';
+    dossierBody.textContent = '';
+    tableBody.textContent = '';
+    updateStats({});
+    document.getElementById('applicationPager')?.replaceChildren();
     loginScreen.style.display = 'block';
     adminApp.style.display = 'none';
   }
@@ -159,6 +167,7 @@
   }
 
   async function loadApplications() {
+    const request = ++rosterRequest;
     const search = searchInput?.value.trim() || '';
     const rank = rankFilter?.value || '';
     const status = statusFilter?.value || '';
@@ -171,6 +180,7 @@
 
     try {
       const res = await fetch(apiUrl('admin/applications', params));
+      if (request !== rosterRequest) return;
 
       if (!res.ok) {
         if (res.status === 401) {
@@ -181,8 +191,13 @@
       }
 
       const data = await res.json();
+      if (request !== rosterRequest) return;
+      if (pageOffset > 0 && pageOffset >= data.total) {
+        pageOffset = Math.max(0, Math.floor((data.total - 1) / 50) * 50);
+        return loadApplications();
+      }
       renderTable(data.items || []);
-      updateStats(data.items || []);
+      updateStats(data.stats || {});
       let pager = document.getElementById('applicationPager');
       if (!pager) { pager = document.createElement('div'); pager.id = 'applicationPager'; tableBody.closest('.table-container, .table-responsive')?.after(pager); if (!pager.isConnected) tableBody.closest('table').after(pager); }
       pager.textContent = `${data.total} applications • Showing ${Math.min(pageOffset+1,data.total)}–${Math.min(pageOffset+50,data.total)} `;
@@ -192,25 +207,16 @@
         button.addEventListener('click', () => { pageOffset = offset; loadApplications(); }); pager.appendChild(button);
       }
     } catch (err) {
-      tableBody.innerHTML = `<tr><td colspan="8" style="text-align:center;padding:24px;color:#ef4444;">Error: ${err.message}</td></tr>`;
+      if (request !== rosterRequest) return;
+      tableBody.innerHTML = `<tr><td colspan="8" style="text-align:center;padding:24px;color:#ef4444;">Error: ${escapeHtml(err.message)}</td></tr>`;
     }
   }
 
-  function updateStats(items) {
-    if (statTotal) statTotal.textContent = items.length;
-    let newCount = 0;
-    let reviewCount = 0;
-    let shortCount = 0;
-
-    items.forEach(it => {
-      if (it.status === 'submitted') newCount++;
-      if (it.status === 'under_review') reviewCount++;
-      if (it.status === 'shortlisted') shortCount++;
-    });
-
-    if (statNew) statNew.textContent = newCount;
-    if (statReview) statReview.textContent = reviewCount;
-    if (statShortlisted) statShortlisted.textContent = shortCount;
+  function updateStats(stats) {
+    if (statTotal) statTotal.textContent = stats.total ?? 0;
+    if (statNew) statNew.textContent = stats.submitted ?? 0;
+    if (statReview) statReview.textContent = stats.under_review ?? 0;
+    if (statShortlisted) statShortlisted.textContent = stats.shortlisted ?? 0;
   }
 
   function renderTable(items) {
@@ -248,7 +254,7 @@
           <td>${escapeHtml(item.phone)}</td>
           <td>${dateFormatted}</td>
           <td>
-            <select class="admin-select" style="padding:4px 8px;font-size:11px;" ${!item.hasDocx?'disabled':''} onchange="updateApplicationStatus('${item.id}', this.value)">
+            <select class="admin-select" style="padding:4px 8px;font-size:11px;" data-original-status="${escapeHtml(item.status)}" ${!item.hasDocx?'disabled':''} onchange="updateApplicationStatus('${item.id}', this.value, this)">
               ${!item.hasDocx?`<option>${escapeHtml(item.status)}</option>`:''}
               <option value="submitted" ${item.status === 'submitted' ? 'selected' : ''}>Submitted</option>
               <option value="under_review" ${item.status === 'under_review' ? 'selected' : ''}>Under Review</option>
@@ -272,7 +278,12 @@
     }).join('');
   }
 
-  window.updateApplicationStatus = async function (id, newStatus) {
+  window.updateApplicationStatus = async function (id, newStatus, control) {
+    const select = control || document.querySelector(`tr[data-id="${id}"] select`);
+    if (!select || select.disabled) return;
+    const originalStatus = select.dataset.originalStatus;
+    if (newStatus === originalStatus) return;
+    select.disabled = true;
     try {
       const res = await fetch(apiUrl(`admin/applications/${id}/status`), {
         method: 'POST',
@@ -282,9 +293,21 @@
         },
         body: JSON.stringify({ status: newStatus })
       });
-      if (!res.ok) alert('Failed to update status.');
+      if (res.status === 401) {
+        select.value = originalStatus;
+        showLogin();
+        showLoginError('Your staff session expired. Sign in to update the application status.');
+        return;
+      }
+      const data = await responseData(res);
+      if (!res.ok || !data.success) throw new Error(data.error || 'Failed to update status.');
+      select.dataset.originalStatus = newStatus;
+      await loadApplications();
     } catch (e) {
-      alert('Error communicating with server.');
+      select.value = originalStatus;
+      alert(e instanceof TypeError ? 'Error communicating with server.' : e.message);
+    } finally {
+      if (select.isConnected) select.disabled = false;
     }
   };
 

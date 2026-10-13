@@ -7,7 +7,7 @@
     "dev": "npm start",
     "lint": "node scripts/check-application.js",
     "build": "node scripts/check-application.js --build",
-    "test": "node tests/application.test.js",
+    "test": "node tests/frontend.test.js && node tests/docx-regression.test.js && node tests/application.test.js",
     "check:runtime": "php scripts/application-preflight.php",
     "package:production": "npm run build && node scripts/package-production.js"
   },

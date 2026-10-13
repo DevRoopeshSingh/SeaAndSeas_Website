@@ -45,7 +45,7 @@ includeDirectory('migrations', ['.sql']);
   }
   const archive = await zip.generateAsync({type: 'nodebuffer', compression: 'DEFLATE', compressionOptions: {level: 9}});
   manifest.archiveSha256 = crypto.createHash('sha256').update(archive).digest('hex');
-  const output = 'releases/seaandseas-production-20261007';
+  const output = 'releases/seaandseas-production-20261013';
   fs.mkdirSync('releases', {recursive: true});
   fs.writeFileSync(output + '.zip', archive);
   fs.writeFileSync(output + '.manifest.json', JSON.stringify(manifest, null, 2) + '\n');

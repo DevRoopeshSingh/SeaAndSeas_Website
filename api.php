@@ -31,12 +31,20 @@ try {
     if($route==='admin/applications'&&$method==='GET'){
         $where='1=1';$args=[];
         $search=substr((string)($_GET['search']??''),0,120);
-        if($search!==''){$where.=' AND (ref_number LIKE ? OR full_name LIKE ? OR email LIKE ? OR indos_number LIKE ?)';$args=array_fill(0,4,'%'.$search.'%');}
+        if($search!==''){
+            $columns=['ref_number','full_name','email','indos_number','phone'];
+            $predicates=array_map(fn($column)=>$column.' LIKE ?',$columns);$args=array_fill(0,count($columns),'%'.$search.'%');
+            if(preg_match('/^\+?[0-9 ()-]+$/D',$search)&&preg_match('/[0-9]/',$search)){
+                $predicates[]="REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(phone,'+',''),' ',''),'(',''),')',''),'-','') LIKE ?";
+                $args[]='%'.preg_replace('/\D/','',$search).'%';
+            }
+            $where.=' AND ('.implode(' OR ',$predicates).')';
+        }
         foreach(['rank'=>'position_applied','status'=>'status']as$key=>$column)if(!empty($_GET[$key])){$where.=' AND '.$column.'=?';$args[]=substr((string)$_GET[$key],0,120);}
-        $s=$db->prepare('SELECT COUNT(*) FROM applications WHERE '.$where);$s->execute($args);$total=(int)$s->fetchColumn();
+        $s=$db->prepare("SELECT COUNT(*) AS total, COALESCE(SUM(status='submitted'),0) AS submitted, COALESCE(SUM(status='under_review'),0) AS under_review, COALESCE(SUM(status='shortlisted'),0) AS shortlisted, COALESCE(SUM(status='rejected'),0) AS rejected, COALESCE(SUM(status='processing'),0) AS processing, COALESCE(SUM(status='failed'),0) AS failed FROM applications WHERE ".$where);$s->execute($args);$stats=array_map('intval',$s->fetch());$total=$stats['total'];
         $limit=max(1,min(100,(int)($_GET['limit']??50)));$offset=max(0,(int)($_GET['offset']??0));
         $s=$db->prepare('SELECT * FROM applications WHERE '.$where.' ORDER BY submitted_at DESC LIMIT '.$limit.' OFFSET '.$offset);$s->execute($args);
-        $items=array_map('app_admin_record',$s->fetchAll());app_json(['success'=>true,'items'=>$items,'total'=>$total,'limit'=>$limit,'offset'=>$offset]);
+        $items=array_map('app_admin_record',$s->fetchAll());app_json(['success'=>true,'items'=>$items,'total'=>$total,'stats'=>$stats,'limit'=>$limit,'offset'=>$offset]);
     }
     if(preg_match('~^admin/applications/([a-f0-9]{32})(?:/(status|download)/(docx|cv))?$~D',$route,$m)){
         $s=$db->prepare('SELECT * FROM applications WHERE id=?');$s->execute([$m[1]]);$record=$s->fetch();if(!$record)app_json(['success'=>false,'error'=>'Application not found.'],404);

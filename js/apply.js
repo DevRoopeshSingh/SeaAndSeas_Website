@@ -13,6 +13,7 @@
   let currentStep = 1;
   let schema = null;
   let isSubmitting = false;
+  let isCompleted = false;
   const KEY_STORAGE = 'seaandseas_application_retry_key';
   function newSubmissionKey() {
     return crypto.randomUUID ? crypto.randomUUID() : Array.from(crypto.getRandomValues(new Uint8Array(16)), byte => byte.toString(16).padStart(2,'0')).join('');
@@ -83,6 +84,7 @@
      2. STEP NAVIGATION & VALIDATION
      ========================================================================== */
   function showStep(stepIndex) {
+    if (isCompleted) return;
     if (stepIndex < 1 || stepIndex > TOTAL_STEPS) return;
     currentStep = stepIndex;
 
@@ -251,6 +253,7 @@
   let autosaveTimer = null;
 
   function scheduleAutosave() {
+    if (isCompleted) return;
     if (draftIndicator) draftIndicator.classList.add('saving');
     const footerInd = document.getElementById('footerDraftIndicator');
     if (footerInd) footerInd.classList.add('saving');
@@ -262,7 +265,7 @@
   }
 
   function saveDraft() {
-    if (!form) return;
+    if (!form || isCompleted) return;
     try {
       const data = {};
       const elements = form.querySelectorAll('input, select, textarea');
@@ -371,6 +374,7 @@
 
   if (clearDraftBtn) {
     clearDraftBtn.addEventListener('click', () => {
+      if (isCompleted) return;
       if (confirm('Are you sure you want to clear your saved draft and reset the form?')) {
         submissionKey = newSubmissionKey();
         try { sessionStorage.removeItem(STORAGE_KEY); sessionStorage.setItem(KEY_STORAGE, submissionKey); } catch { /* Storage may be disabled. */ }
@@ -442,16 +446,16 @@
       if (!spec.when) return;
       const input = form.querySelector(`[name="${name}"]`);
       if (!input) return;
-      const active = form.querySelector(`[name="${spec.when[0]}"]:checked`)?.value === spec.when[1];
+      const active = form.querySelector(`[name="${spec.when[0]}"]:checked`)?.value.trim() === spec.when[1];
       input.required = active;
       const wrapper = input.closest('[data-condition]');
       if (wrapper) wrapper.style.display = active ? 'block' : 'none';
     });
     // Medical signoff reveal
-    const medSignoffYes = document.querySelector('input[name="medical_signoff"][value="Yes"]');
+    const medSignoffChecked = document.querySelector('input[name="medical_signoff"]:checked');
     const medDetailsBox = document.getElementById('medSignoffDetails');
-    if (medSignoffYes && medDetailsBox) {
-      medDetailsBox.style.display = medSignoffYes.checked ? 'block' : 'none';
+    if (medDetailsBox) {
+      medDetailsBox.style.display = (medSignoffChecked?.value.trim() === 'Yes') ? 'block' : 'none';
     }
 
     // Rank role highlighting
@@ -593,9 +597,9 @@
     tr.innerHTML = `
       <td>
         <select name="fam_rel_${count}" style="min-width:100px;">
+          <option value="Wife">Wife</option>
           <option value="Child (M)">Child (M)</option>
           <option value="Child (F)">Child (F)</option>
-          <option value="Wife">Wife</option>
           <option value="Father">Father</option>
           <option value="Mother">Mother</option>
         </select>
@@ -661,28 +665,7 @@
 
     if (!calcInput) return;
 
-    if (fromDateVal && toDateVal) {
-      const d1 = new Date(fromDateVal);
-      const d2 = new Date(toDateVal);
-
-      if (d2 >= d1) {
-        // Difference in months & days
-        let months = (d2.getFullYear() - d1.getFullYear()) * 12 + (d2.getMonth() - d1.getMonth());
-        let days = d2.getDate() - d1.getDate();
-
-        if (days < 0) {
-          months -= 1;
-          const prevMonthLastDay = new Date(d2.getFullYear(), d2.getMonth(), 0).getDate();
-          days += prevMonthLastDay;
-        }
-
-        calcInput.value = `${months}M ${days}D`;
-      } else {
-        calcInput.value = 'Invalid';
-      }
-    } else {
-      calcInput.value = '';
-    }
+    calcInput.value = fromDateVal && toDateVal ? ApplicationValidation.seaDuration(fromDateVal, toDateVal) || 'Invalid' : '';
   }
 
   function recalculateAllSeaTimes() {
@@ -722,6 +705,7 @@
       const input = document.createElement('input');
       input.name = name+'_'+n;
       input.type = /_(doi|doe)$/.test(name) ? 'date' : 'text';
+      input.setAttribute('type', input.type);
       input.maxLength = 120;
       input.setAttribute('aria-label', name.replaceAll('_', ' '));
       cell.appendChild(input);
@@ -778,7 +762,7 @@
   if (form) {
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
-      if (isSubmitting || !schema) return;
+      if (isSubmitting || isCompleted || !schema) return;
       for (let step = 1; step <= TOTAL_STEPS; step++) {
         const errors = ApplicationValidation.validate(collectData(), schema, step);
         if (Object.keys(errors).length) { showStep(step); displayErrors(errors); return; }
@@ -864,7 +848,25 @@
 
   function renderSuccessView(refNumber, downloadUrl) {
     const card = document.querySelector('.apply-card');
-    if (!card) return;
+    if (!card || isCompleted) return;
+    isCompleted = true;
+    clearTimeout(autosaveTimer);
+
+    // Preserve the submitted values for printing while preventing further edits.
+    const printCopy = document.createElement('fieldset');
+    printCopy.className = 'application-print-copy';
+    printCopy.disabled = true;
+    card.before(printCopy);
+    printCopy.appendChild(card);
+    const reference = document.createElement('p');
+    reference.className = 'submission-print-reference';
+    reference.textContent = 'Submitted application: '+refNumber;
+    card.prepend(reference);
+    card.querySelectorAll('input[type="file"]').forEach(input => { input.value = ''; });
+
+    const successCard = document.createElement('div');
+    successCard.className = 'apply-card application-success-view';
+    printCopy.after(successCard);
 
     const downloadButtonHtml = downloadUrl ? `
       <a href="${downloadUrl}" class="btn-print-bio" style="text-decoration:none;background:var(--brand-royal,#183358);color:#fff;display:inline-flex;align-items:center;gap:8px;padding:12px 24px;border-radius:4px;font-weight:700;box-shadow:0 4px 12px rgba(24,51,88,0.25);" download>
@@ -873,7 +875,7 @@
       </a>
     ` : '';
 
-    card.innerHTML = `
+    successCard.innerHTML = `
       <div class="submission-success-card">
         <div class="success-icon-badge">✓</div>
         <h2>Application Successfully Enrolled</h2>
@@ -897,7 +899,7 @@
         <div style="display:flex;align-items:center;justify-content:center;gap:14px;flex-wrap:wrap;">
           ${downloadButtonHtml}
           <button type="button" class="btn-print-bio" onclick="window.print()" style="background:#f1f5f9;color:#1e293b;border:1px solid #cbd5e1;">
-            🖨️ Print Form RPS 01-A (A4)
+            🖨️ Print Completed Bio-Data
           </button>
           <a href="index.html" class="btn-prev" style="text-decoration:none;">
             ← Return to Fleet Homepage

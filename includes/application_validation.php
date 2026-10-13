@@ -29,9 +29,12 @@ function app_validate_value(string $v, array $spec, string $key, array &$errors)
 function app_validate(array $input): array {
     $schema=app_schema();$errors=[];$data=[];
     foreach ($schema['fields'] as $key=>$spec) {
-        $v=app_text($input[$key]??'', $spec['max'], $key,$errors);
-        if (($spec['required']||isset($spec['when']) && ($input[$spec['when'][0]]??'')===$spec['when'][1]) && $v==='') $errors[$key]='This field is required.';
-        app_validate_value($v,$spec,$key,$errors);$data[$key]=$v;
+        $data[$key]=app_text($input[$key]??'', $spec['max'], $key,$errors);
+    }
+    foreach ($schema['fields'] as $key=>$spec) {
+        $v=$data[$key];
+        if (($spec['required']||isset($spec['when']) && ($data[$spec['when'][0]]??'')===$spec['when'][1]) && $v==='') $errors[$key]='This field is required.';
+        app_validate_value($v,$spec,$key,$errors);
     }
     $data['email']=strtolower($data['email']);
     foreach ($schema['repeats'] as $group=>$spec) {
