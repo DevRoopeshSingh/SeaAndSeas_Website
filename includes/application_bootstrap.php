@@ -118,6 +118,17 @@ function app_file(string $relative): string {
 function app_stream(array $record, string $type): never {
     $relative=$type==='docx'?$record['docx_path']:$record['cv_path'];
     $path=app_file($relative??'');
+    if($type==='docx'&&!empty($record['data_json'])){
+        try {
+            $data=json_decode($record['data_json'],true,512,JSON_THROW_ON_ERROR);
+            if(is_array($data)){
+                require_once __DIR__.'/application_docx.php';
+                app_generate_docx($data,$record['ref_number'],$path);
+            }
+        }catch(Throwable $e){
+            error_log('DOCX streaming refresh fallback: '.$e->getMessage());
+        }
+    }
     $filename=$type==='docx'?$record['ref_number'].'.docx':preg_replace('/[^a-zA-Z0-9._-]/','_', $record['cv_name']);
     header('Cache-Control: private, no-store');header('Referrer-Policy: no-referrer');header('X-Content-Type-Options: nosniff');
     header('Content-Type: '.($type==='docx'?'application/vnd.openxmlformats-officedocument.wordprocessingml.document':'application/octet-stream'));
