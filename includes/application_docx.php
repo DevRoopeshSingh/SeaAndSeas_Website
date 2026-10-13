@@ -228,17 +228,29 @@ function app_generate_docx(array $data,string $ref,string $output): void {
                 }
             }
         }
-        // Compact Table 6 onto Page 5 with 9pt labels and tight row heights
+        // Format Table 6 onto Page 5 with comfortable row heights and clean cell spacing so multi-line course labels are fully visible
         foreach(app_children($tables[6],'tr')as$row){
+            $txt=app_doc_text($row);
+            $isMulti=str_contains($txt,'BRIDGE RESOURCE')||str_contains($txt,'BRIDGE TEAM')||str_contains($txt,'ENGINE ROOM')||str_contains($txt,'HIGH VOLTAGE')||str_contains($txt,'RATING FORMING')||str_contains($txt,'LEADERSHIP')||str_contains($txt,'SECURITY AWARENESS')||str_contains($txt,'RADAR NAVIGATION');
             $trPr=app_children($row,'trPr')[0]??$doc->createElementNS(APP_WORD_NS,'w:trPr');
             if(!$trPr->parentNode)$row->insertBefore($trPr,$row->firstChild);
             $trH=app_children($trPr,'trHeight')[0]??$doc->createElementNS(APP_WORD_NS,'w:trHeight');
-            $trH->setAttributeNS(APP_WORD_NS,'w:val','265');$trH->setAttributeNS(APP_WORD_NS,'w:hRule','atLeast');
+            $trH->setAttributeNS(APP_WORD_NS,'w:val',$isMulti?'460':'320');$trH->setAttributeNS(APP_WORD_NS,'w:hRule','atLeast');
             if(!$trH->parentNode)$trPr->appendChild($trH);
             foreach(app_children($row,'tc')as$tc){
+                $tcPr=app_children($tc,'tcPr')[0]??$doc->createElementNS(APP_WORD_NS,'w:tcPr');
+                if(!$tcPr->parentNode)$tc->insertBefore($tcPr,$tc->firstChild);
+                $va=app_children($tcPr,'vAlign')[0]??$doc->createElementNS(APP_WORD_NS,'w:vAlign');
+                $va->setAttributeNS(APP_WORD_NS,'w:val','center');
+                if(!$va->parentNode)$tcPr->appendChild($va);
                 foreach(app_children($tc,'p')as$p){
-                    $pPr=app_children($p,'pPr')[0]??null;
-                    $rPr=$pPr?app_children($pPr,'rPr')[0]??null:null;
+                    $pPr=app_children($p,'pPr')[0]??$doc->createElementNS(APP_WORD_NS,'w:pPr');
+                    if(!$pPr->parentNode)$p->insertBefore($pPr,$p->firstChild);
+                    $sp=app_children($pPr,'spacing')[0]??$doc->createElementNS(APP_WORD_NS,'w:spacing');
+                    $sp->setAttributeNS(APP_WORD_NS,'w:before','20');$sp->setAttributeNS(APP_WORD_NS,'w:after','20');
+                    $sp->setAttributeNS(APP_WORD_NS,'w:line','220');$sp->setAttributeNS(APP_WORD_NS,'w:lineRule','auto');
+                    if(!$sp->parentNode)$pPr->appendChild($sp);
+                    $rPr=app_children($pPr,'rPr')[0]??null;
                     if($rPr){
                         $sz=app_children($rPr,'sz')[0]??null;
                         if($sz&&(int)$sz->getAttributeNS(APP_WORD_NS,'val')>18)$sz->setAttributeNS(APP_WORD_NS,'w:val','18');
