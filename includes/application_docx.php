@@ -104,10 +104,26 @@ function app_generate_docx(array $data,string $ref,string $output): void {
         for($n=$tables[1]->nextSibling;$n&&$n!==$tables[2];$n=$next){$next=$n->nextSibling;$body->removeChild($n);}
         $pbP1=$doc->createElementNS(APP_WORD_NS,'w:p');$pbR1=$doc->createElementNS(APP_WORD_NS,'w:r');$pbBr1=$doc->createElementNS(APP_WORD_NS,'w:br');
         $pbBr1->setAttributeNS(APP_WORD_NS,'w:type','page');$pbR1->appendChild($pbBr1);$pbP1->appendChild($pbR1);$body->insertBefore($pbP1,$tables[2]);
-        // Page 2: Tables 2, 3, 4. Ensure Medical History table row (b) and (e) have clean vertical breathing room.
+        // Page 2: Tables 2, 3, 4. Ensure Medical History and Travel Documents utilize available space cleanly.
         $t2Rows=app_children($tables[2],'tr');
         if(isset($t2Rows[6]))foreach(app_children($t2Rows[6],'trPr')as$tp)foreach(app_children($tp,'trHeight')as$th){$th->setAttributeNS(APP_WORD_NS,'w:val','580');$th->setAttributeNS(APP_WORD_NS,'w:hRule','atLeast');}
         if(isset($t2Rows[11]))foreach(app_children($t2Rows[11],'trPr')as$tp)foreach(app_children($tp,'trHeight')as$th){$th->setAttributeNS(APP_WORD_NS,'w:val','340');$th->setAttributeNS(APP_WORD_NS,'w:hRule','atLeast');}
+        foreach(app_children($tables[3],'tr')as$row){
+            $trPr=app_children($row,'trPr')[0]??$doc->createElementNS(APP_WORD_NS,'w:trPr');
+            if(!$trPr->parentNode)$row->insertBefore($trPr,$row->firstChild);
+            $trH=app_children($trPr,'trHeight')[0]??$doc->createElementNS(APP_WORD_NS,'w:trHeight');
+            if(!$trH->parentNode)$trPr->appendChild($trH);
+            $val=(int)$trH->getAttributeNS(APP_WORD_NS,'val');
+            if($val<320)$trH->setAttributeNS(APP_WORD_NS,'w:val','320');
+            $trH->setAttributeNS(APP_WORD_NS,'w:hRule','atLeast');
+            foreach(app_children($row,'tc')as$tc){
+                $tcPr=app_children($tc,'tcPr')[0]??$doc->createElementNS(APP_WORD_NS,'w:tcPr');
+                if(!$tcPr->parentNode)$tc->insertBefore($tcPr,$tc->firstChild);
+                $va=app_children($tcPr,'vAlign')[0]??$doc->createElementNS(APP_WORD_NS,'w:vAlign');
+                $va->setAttributeNS(APP_WORD_NS,'w:val','center');
+                if(!$va->parentNode)$tcPr->appendChild($va);
+            }
+        }
         // Place a clean page break between Table 4 and Table 5.
         for($n=$tables[4]->nextSibling;$n&&$n!==$tables[5];$n=$next){$next=$n->nextSibling;$body->removeChild($n);}
         $pbP2=$doc->createElementNS(APP_WORD_NS,'w:p');$pbR2=$doc->createElementNS(APP_WORD_NS,'w:r');$pbBr2=$doc->createElementNS(APP_WORD_NS,'w:br');
@@ -123,6 +139,21 @@ function app_generate_docx(array $data,string $ref,string $output): void {
             if($node->localName==='p'){
                 foreach(iterator_to_array($node->getElementsByTagNameNS(APP_WORD_NS,'br'))as$br)if($br->getAttributeNS(APP_WORD_NS,'type')==='page')$br->parentNode->removeChild($br);
                 break;
+            }
+        }
+        foreach(app_children($tables[7],'tr')as$rIdx=>$row){
+            if($rIdx<2)continue;
+            $trPr=app_children($row,'trPr')[0]??$doc->createElementNS(APP_WORD_NS,'w:trPr');
+            if(!$trPr->parentNode)$row->insertBefore($trPr,$row->firstChild);
+            $trH=app_children($trPr,'trHeight')[0]??$doc->createElementNS(APP_WORD_NS,'w:trHeight');
+            $trH->setAttributeNS(APP_WORD_NS,'w:val','380');$trH->setAttributeNS(APP_WORD_NS,'w:hRule','atLeast');
+            if(!$trH->parentNode)$trPr->appendChild($trH);
+            foreach(app_children($row,'tc')as$tc){
+                $tcPr=app_children($tc,'tcPr')[0]??$doc->createElementNS(APP_WORD_NS,'w:tcPr');
+                if(!$tcPr->parentNode)$tc->insertBefore($tcPr,$tc->firstChild);
+                $va=app_children($tcPr,'vAlign')[0]??$doc->createElementNS(APP_WORD_NS,'w:vAlign');
+                $va->setAttributeNS(APP_WORD_NS,'w:val','center');
+                if(!$va->parentNode)$tcPr->appendChild($va);
             }
         }
         foreach($doc->getElementsByTagNameNS(APP_WORD_NS,'sectPr')as$i=>$section){
@@ -189,19 +220,28 @@ function app_generate_docx(array $data,string $ref,string $output): void {
             if(str_contains($text,'SIGNED BY CREW')&&isset($paragraphs[$i+1]))app_write_text($paragraphs[$i+1],'Place: '.$data['signature_place'].' | Application: '.$ref.' | Typed applicant acknowledgement');
         }
         if(!$foundWages||!$foundSignature)throw new RuntimeException('Missing wage/signature slots.');
-        // Compact Table 5 across Pages 3 and 4 with 7.5pt text and tight padding
+        // Format Table 5 across Pages 3 and 4: utilize unused bottom space on Page 4 with 9pt text and comfortable 340 dxa row height
+        $isPage4=false;
         foreach(app_children($tables[5],'tr')as$row){
+            $txt=app_doc_text($row);
+            if(str_contains($txt,'Liquefied Gas')||str_contains($txt,'6. INDIAN COURSES'))$isPage4=true;
             $trPr=app_children($row,'trPr')[0]??$doc->createElementNS(APP_WORD_NS,'w:trPr');
             if(!$trPr->parentNode)$row->insertBefore($trPr,$row->firstChild);
             $trH=app_children($trPr,'trHeight')[0]??$doc->createElementNS(APP_WORD_NS,'w:trHeight');
-            $trH->setAttributeNS(APP_WORD_NS,'w:val','210');$trH->setAttributeNS(APP_WORD_NS,'w:hRule','atLeast');
+            $trH->setAttributeNS(APP_WORD_NS,'w:val',$isPage4?'340':'220');$trH->setAttributeNS(APP_WORD_NS,'w:hRule','atLeast');
             if(!$trH->parentNode)$trPr->appendChild($trH);
+            $szVal=$isPage4?'18':'16';
+            $pad=$isPage4?25:12;
+            $lineVal=$isPage4?'230':'205';
             foreach(app_children($row,'tc')as$tc){
                 $tcPr=app_children($tc,'tcPr')[0]??$doc->createElementNS(APP_WORD_NS,'w:tcPr');
                 if(!$tcPr->parentNode)$tc->insertBefore($tcPr,$tc->firstChild);
+                $va=app_children($tcPr,'vAlign')[0]??$doc->createElementNS(APP_WORD_NS,'w:vAlign');
+                $va->setAttributeNS(APP_WORD_NS,'w:val','center');
+                if(!$va->parentNode)$tcPr->appendChild($va);
                 $tcMar=app_children($tcPr,'tcMar')[0]??$doc->createElementNS(APP_WORD_NS,'w:tcMar');
                 if(!$tcMar->parentNode)$tcPr->appendChild($tcMar);
-                foreach(['left'=>40,'right'=>40,'top'=>10,'bottom'=>10]as$side=>$val){
+                foreach(['left'=>40,'right'=>40,'top'=>$pad,'bottom'=>$pad]as$side=>$val){
                     $m=app_children($tcMar,$side)[0]??$doc->createElementNS(APP_WORD_NS,'w:'.$side);
                     $m->setAttributeNS(APP_WORD_NS,'w:w',(string)$val);$m->setAttributeNS(APP_WORD_NS,'w:type','dxa');
                     if(!$m->parentNode)$tcMar->appendChild($m);
@@ -210,20 +250,20 @@ function app_generate_docx(array $data,string $ref,string $output): void {
                     $pPr=app_children($p,'pPr')[0]??$doc->createElementNS(APP_WORD_NS,'w:pPr');
                     if(!$pPr->parentNode)$p->insertBefore($pPr,$p->firstChild);
                     $sp=app_children($pPr,'spacing')[0]??$doc->createElementNS(APP_WORD_NS,'w:spacing');
-                    $sp->setAttributeNS(APP_WORD_NS,'w:after','0');$sp->setAttributeNS(APP_WORD_NS,'w:before','0');$sp->setAttributeNS(APP_WORD_NS,'w:line','200');$sp->setAttributeNS(APP_WORD_NS,'w:lineRule','auto');
+                    $sp->setAttributeNS(APP_WORD_NS,'w:after','0');$sp->setAttributeNS(APP_WORD_NS,'w:before','0');$sp->setAttributeNS(APP_WORD_NS,'w:line',$lineVal);$sp->setAttributeNS(APP_WORD_NS,'w:lineRule','auto');
                     if(!$sp->parentNode)$pPr->appendChild($sp);
                     $rPr=app_children($pPr,'rPr')[0]??null;
                     if($rPr){
-                        $sz=app_children($rPr,'sz')[0]??null;if($sz)$sz->setAttributeNS(APP_WORD_NS,'w:val','15');
-                        $szCs=app_children($rPr,'szCs')[0]??null;if($szCs)$szCs->setAttributeNS(APP_WORD_NS,'w:val','15');
+                        $sz=app_children($rPr,'sz')[0]??null;if($sz)$sz->setAttributeNS(APP_WORD_NS,'w:val',$szVal);
+                        $szCs=app_children($rPr,'szCs')[0]??null;if($szCs)$szCs->setAttributeNS(APP_WORD_NS,'w:val',$szVal);
                     }
                     foreach(app_children($p,'r')as$r){
                         $runRPr=app_children($r,'rPr')[0]??$doc->createElementNS(APP_WORD_NS,'w:rPr');
                         if(!$runRPr->parentNode)$r->insertBefore($runRPr,$r->firstChild);
                         $sz=app_children($runRPr,'sz')[0]??$doc->createElementNS(APP_WORD_NS,'w:sz');
-                        $sz->setAttributeNS(APP_WORD_NS,'w:val','15');
+                        $sz->setAttributeNS(APP_WORD_NS,'w:val',$szVal);
                         if(!$sz->parentNode)$runRPr->appendChild($sz);
-                        $szCs=app_children($runRPr,'szCs')[0]??null;if($szCs)$szCs->setAttributeNS(APP_WORD_NS,'w:val','15');
+                        $szCs=app_children($runRPr,'szCs')[0]??null;if($szCs)$szCs->setAttributeNS(APP_WORD_NS,'w:val',$szVal);
                     }
                 }
             }
