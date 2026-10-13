@@ -104,7 +104,11 @@ function app_generate_docx(array $data,string $ref,string $output): void {
         for($n=$tables[1]->nextSibling;$n&&$n!==$tables[2];$n=$next){$next=$n->nextSibling;$body->removeChild($n);}
         $pbP1=$doc->createElementNS(APP_WORD_NS,'w:p');$pbR1=$doc->createElementNS(APP_WORD_NS,'w:r');$pbBr1=$doc->createElementNS(APP_WORD_NS,'w:br');
         $pbBr1->setAttributeNS(APP_WORD_NS,'w:type','page');$pbR1->appendChild($pbBr1);$pbP1->appendChild($pbR1);$body->insertBefore($pbP1,$tables[2]);
-        // Page 2: Tables 2, 3, 4. Place a clean page break between Table 4 and Table 5.
+        // Page 2: Tables 2, 3, 4. Ensure Medical History table row (b) and (e) have clean vertical breathing room.
+        $t2Rows=app_children($tables[2],'tr');
+        if(isset($t2Rows[6]))foreach(app_children($t2Rows[6],'trPr')as$tp)foreach(app_children($tp,'trHeight')as$th){$th->setAttributeNS(APP_WORD_NS,'w:val','580');$th->setAttributeNS(APP_WORD_NS,'w:hRule','atLeast');}
+        if(isset($t2Rows[11]))foreach(app_children($t2Rows[11],'trPr')as$tp)foreach(app_children($tp,'trHeight')as$th){$th->setAttributeNS(APP_WORD_NS,'w:val','340');$th->setAttributeNS(APP_WORD_NS,'w:hRule','atLeast');}
+        // Place a clean page break between Table 4 and Table 5.
         for($n=$tables[4]->nextSibling;$n&&$n!==$tables[5];$n=$next){$next=$n->nextSibling;$body->removeChild($n);}
         $pbP2=$doc->createElementNS(APP_WORD_NS,'w:p');$pbR2=$doc->createElementNS(APP_WORD_NS,'w:r');$pbBr2=$doc->createElementNS(APP_WORD_NS,'w:br');
         $pbBr2->setAttributeNS(APP_WORD_NS,'w:type','page');$pbR2->appendChild($pbBr2);$pbP2->appendChild($pbR2);$body->insertBefore($pbP2,$tables[5]);
