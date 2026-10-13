@@ -65,6 +65,17 @@ function app_generate_docx(array $data,string $ref,string $output): void {
         // Split only these four data/header cells so the mapped values are visible.
         foreach([3,4]as$r)for($c=0;$c<4;$c++)foreach(iterator_to_array($matrix[3][$r][$c]->getElementsByTagNameNS(APP_WORD_NS,'vMerge'))as$merge)$merge->parentNode->removeChild($merge);
         foreach([1=>'Date of Issue',2=>'Place of Issue',3=>'Date of Expiry']as$c=>$label)app_write_text($matrix[3][3][$c],$label);
+        $body=$doc->getElementsByTagNameNS(APP_WORD_NS,'body')->item(0);
+        // Page 1: Tables 0 & 1. Place a clean page break between Table 1 and Table 2.
+        for($n=$tables[1]->nextSibling;$n&&$n!==$tables[2];$n=$next){$next=$n->nextSibling;$body->removeChild($n);}
+        $pbP1=$doc->createElementNS(APP_WORD_NS,'w:p');$pbR1=$doc->createElementNS(APP_WORD_NS,'w:r');$pbBr1=$doc->createElementNS(APP_WORD_NS,'w:br');
+        $pbBr1->setAttributeNS(APP_WORD_NS,'w:type','page');$pbR1->appendChild($pbBr1);$pbP1->appendChild($pbR1);$body->insertBefore($pbP1,$tables[2]);
+        // Page 2: Tables 2, 3, 4. Place a clean page break between Table 4 and Table 5.
+        for($n=$tables[4]->nextSibling;$n&&$n!==$tables[5];$n=$next){$next=$n->nextSibling;$body->removeChild($n);}
+        $pbP2=$doc->createElementNS(APP_WORD_NS,'w:p');$pbR2=$doc->createElementNS(APP_WORD_NS,'w:r');$pbBr2=$doc->createElementNS(APP_WORD_NS,'w:br');
+        $pbBr2->setAttributeNS(APP_WORD_NS,'w:type','page');$pbR2->appendChild($pbBr2);$pbP2->appendChild($pbR2);$body->insertBefore($pbP2,$tables[5]);
+        // Pages 3 & 4: Table 5. Clean up spacer paragraphs between Table 5 and Table 6 so Table 6 starts directly on Page 5.
+        for($n=$tables[5]->nextSibling;$n&&$n!==$tables[6];$n=$next){$next=$n->nextSibling;$body->removeChild($n);}
         // The original floating landscape table starts under the header logo.
         // Preserve clean flow: unfloat Table 7, remove redundant page breaks, and tighten margins.
         foreach(iterator_to_array($tables[7]->getElementsByTagNameNS(APP_WORD_NS,'tblpPr'))as$p)$p->parentNode->removeChild($p);
@@ -74,10 +85,12 @@ function app_generate_docx(array $data,string $ref,string $output): void {
                 break;
             }
         }
-        foreach($doc->getElementsByTagNameNS(APP_WORD_NS,'sectPr')as$section){
+        foreach($doc->getElementsByTagNameNS(APP_WORD_NS,'sectPr')as$i=>$section){
             $size=app_children($section,'pgSz')[0]??null;
             if($size?->getAttributeNS(APP_WORD_NS,'orient')==='landscape'){
                 $margin=app_children($section,'pgMar')[0];$margin->setAttributeNS(APP_WORD_NS,'w:top','720');$margin->setAttributeNS(APP_WORD_NS,'w:bottom','480');
+            } else if($i===0){
+                $margin=app_children($section,'pgMar')[0];$margin->setAttributeNS(APP_WORD_NS,'w:top','360');$margin->setAttributeNS(APP_WORD_NS,'w:bottom','360');$margin->setAttributeNS(APP_WORD_NS,'w:header','360');$margin->setAttributeNS(APP_WORD_NS,'w:footer','200');
             }
         }
         $values=[];
@@ -136,6 +149,81 @@ function app_generate_docx(array $data,string $ref,string $output): void {
             if(str_contains($text,'SIGNED BY CREW')&&isset($paragraphs[$i+1]))app_write_text($paragraphs[$i+1],'Place: '.$data['signature_place'].' | Application: '.$ref.' | Typed applicant acknowledgement');
         }
         if(!$foundWages||!$foundSignature)throw new RuntimeException('Missing wage/signature slots.');
+        // Compact Table 5 across Pages 3 and 4 with 7.5pt text and tight padding
+        foreach(app_children($tables[5],'tr')as$row){
+            $trPr=app_children($row,'trPr')[0]??$doc->createElementNS(APP_WORD_NS,'w:trPr');
+            if(!$trPr->parentNode)$row->insertBefore($trPr,$row->firstChild);
+            $trH=app_children($trPr,'trHeight')[0]??$doc->createElementNS(APP_WORD_NS,'w:trHeight');
+            $trH->setAttributeNS(APP_WORD_NS,'w:val','210');$trH->setAttributeNS(APP_WORD_NS,'w:hRule','atLeast');
+            if(!$trH->parentNode)$trPr->appendChild($trH);
+            foreach(app_children($row,'tc')as$tc){
+                $tcPr=app_children($tc,'tcPr')[0]??$doc->createElementNS(APP_WORD_NS,'w:tcPr');
+                if(!$tcPr->parentNode)$tc->insertBefore($tcPr,$tc->firstChild);
+                $tcMar=app_children($tcPr,'tcMar')[0]??$doc->createElementNS(APP_WORD_NS,'w:tcMar');
+                if(!$tcMar->parentNode)$tcPr->appendChild($tcMar);
+                foreach(['left'=>40,'right'=>40,'top'=>10,'bottom'=>10]as$side=>$val){
+                    $m=app_children($tcMar,$side)[0]??$doc->createElementNS(APP_WORD_NS,'w:'.$side);
+                    $m->setAttributeNS(APP_WORD_NS,'w:w',(string)$val);$m->setAttributeNS(APP_WORD_NS,'w:type','dxa');
+                    if(!$m->parentNode)$tcMar->appendChild($m);
+                }
+                foreach(app_children($tc,'p')as$p){
+                    $pPr=app_children($p,'pPr')[0]??$doc->createElementNS(APP_WORD_NS,'w:pPr');
+                    if(!$pPr->parentNode)$p->insertBefore($pPr,$p->firstChild);
+                    $sp=app_children($pPr,'spacing')[0]??$doc->createElementNS(APP_WORD_NS,'w:spacing');
+                    $sp->setAttributeNS(APP_WORD_NS,'w:after','0');$sp->setAttributeNS(APP_WORD_NS,'w:before','0');$sp->setAttributeNS(APP_WORD_NS,'w:line','200');$sp->setAttributeNS(APP_WORD_NS,'w:lineRule','auto');
+                    if(!$sp->parentNode)$pPr->appendChild($sp);
+                    $rPr=app_children($pPr,'rPr')[0]??null;
+                    if($rPr){
+                        $sz=app_children($rPr,'sz')[0]??null;if($sz)$sz->setAttributeNS(APP_WORD_NS,'w:val','15');
+                        $szCs=app_children($rPr,'szCs')[0]??null;if($szCs)$szCs->setAttributeNS(APP_WORD_NS,'w:val','15');
+                    }
+                    foreach(app_children($p,'r')as$r){
+                        $runRPr=app_children($r,'rPr')[0]??$doc->createElementNS(APP_WORD_NS,'w:rPr');
+                        if(!$runRPr->parentNode)$r->insertBefore($runRPr,$r->firstChild);
+                        $sz=app_children($runRPr,'sz')[0]??$doc->createElementNS(APP_WORD_NS,'w:sz');
+                        $sz->setAttributeNS(APP_WORD_NS,'w:val','15');
+                        if(!$sz->parentNode)$runRPr->appendChild($sz);
+                        $szCs=app_children($runRPr,'szCs')[0]??null;if($szCs)$szCs->setAttributeNS(APP_WORD_NS,'w:val','15');
+                    }
+                }
+            }
+        }
+        // Compact Table 6 onto Page 5 with 9pt labels and tight row heights
+        foreach(app_children($tables[6],'tr')as$row){
+            $trPr=app_children($row,'trPr')[0]??$doc->createElementNS(APP_WORD_NS,'w:trPr');
+            if(!$trPr->parentNode)$row->insertBefore($trPr,$row->firstChild);
+            $trH=app_children($trPr,'trHeight')[0]??$doc->createElementNS(APP_WORD_NS,'w:trHeight');
+            $trH->setAttributeNS(APP_WORD_NS,'w:val','265');$trH->setAttributeNS(APP_WORD_NS,'w:hRule','atLeast');
+            if(!$trH->parentNode)$trPr->appendChild($trH);
+            foreach(app_children($row,'tc')as$tc){
+                foreach(app_children($tc,'p')as$p){
+                    $pPr=app_children($p,'pPr')[0]??null;
+                    $rPr=$pPr?app_children($pPr,'rPr')[0]??null:null;
+                    if($rPr){
+                        $sz=app_children($rPr,'sz')[0]??null;
+                        if($sz&&(int)$sz->getAttributeNS(APP_WORD_NS,'val')>18)$sz->setAttributeNS(APP_WORD_NS,'w:val','18');
+                    }
+                    foreach(app_children($p,'r')as$r){
+                        $runRPr=app_children($r,'rPr')[0]??null;
+                        if($runRPr){
+                            $sz=app_children($runRPr,'sz')[0]??null;
+                            if($sz&&(int)$sz->getAttributeNS(APP_WORD_NS,'val')>18)$sz->setAttributeNS(APP_WORD_NS,'w:val','18');
+                        }
+                    }
+                }
+            }
+        }
+        // Clean up empty spacer paragraphs between Declaration and Signatures so they fit together on Page 8
+        $declFound=false;$sigFound=false;$emptyPs=[];
+        foreach(iterator_to_array($body->childNodes)as$child){
+            if($child->localName==='tbl'&&$child===$tables[11]){$declFound=false;}
+            $text=app_doc_text($child);
+            if(str_contains($text,'DECLARATION')){$declFound=true;}
+            elseif(str_contains($text,'RECEIVED BY')){$sigFound=true;}
+            elseif($declFound&&!$sigFound&&$child->localName==='p'&&trim($text)===''){$emptyPs[]=$child;}
+            elseif($sigFound&&$child->localName==='p'&&trim($text)===''){$emptyPs[]=$child;}
+        }
+        foreach(array_slice($emptyPs,1)as$p)$body->removeChild($p);
         $updated=$doc->saveXML();if(str_contains($updated,'{{'))throw new RuntimeException('Unresolved template placeholders.');
         if(!$zip->addFromString('word/document.xml',$updated))throw new RuntimeException('Document write failed.');
     } finally {if(!$zip->close())throw new RuntimeException('Document archive could not be saved.');}
