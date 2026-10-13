@@ -66,6 +66,40 @@ function app_generate_docx(array $data,string $ref,string $output): void {
         foreach([3,4]as$r)for($c=0;$c<4;$c++)foreach(iterator_to_array($matrix[3][$r][$c]->getElementsByTagNameNS(APP_WORD_NS,'vMerge'))as$merge)$merge->parentNode->removeChild($merge);
         foreach([1=>'Date of Issue',2=>'Place of Issue',3=>'Date of Expiry']as$c=>$label)app_write_text($matrix[3][3][$c],$label);
         $body=$doc->getElementsByTagNameNS(APP_WORD_NS,'body')->item(0);
+        // Page 1: Remove empty spacer paragraphs before Table 0 and align applicant photo box
+        $photoP=null;
+        for($c=$body->firstChild;$c&&$c!==$tables[0];$c=$next){
+            $next=$c->nextSibling;
+            if($c->nodeType===XML_ELEMENT_NODE&&$c->localName==='p'){
+                $hasDraw=$c->getElementsByTagNameNS(APP_WORD_NS,'drawing')->length>0||$c->getElementsByTagNameNS('urn:schemas-microsoft-com:vml','rect')->length>0;
+                if($hasDraw)$photoP=$c;
+                else if(trim($c->textContent)==='')$body->removeChild($c);
+            }
+        }
+        if($photoP){
+            foreach($photoP->getElementsByTagNameNS('http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing','positionV')as$pv){
+                foreach(app_children($pv,'posOffset')as$po)$po->textContent='0';
+            }
+            foreach($photoP->getElementsByTagNameNS('urn:schemas-microsoft-com:vml','rect')as$rect){
+                $s=$rect->getAttribute('style');
+                $rect->setAttribute('style',preg_replace('/margin-top:[^;]+;/','margin-top:0pt;',$s));
+            }
+            foreach($photoP->getElementsByTagNameNS(APP_WORD_NS,'r')as$r){
+                foreach(app_children($r,'tab')as$tb)$tb->parentNode->removeChild($tb);
+            }
+            $pPr=app_children($photoP,'pPr')[0]??null;
+            if($pPr){
+                $sp=app_children($pPr,'spacing')[0]??$doc->createElementNS(APP_WORD_NS,'w:spacing');
+                $sp->setAttributeNS(APP_WORD_NS,'w:before','0');$sp->setAttributeNS(APP_WORD_NS,'w:after','0');
+                $sp->setAttributeNS(APP_WORD_NS,'w:line','100');$sp->setAttributeNS(APP_WORD_NS,'w:lineRule','exact');
+                if(!$sp->parentNode)$pPr->appendChild($sp);
+            }
+        }
+        $between01=[];
+        for($c=$tables[0]->nextSibling;$c&&$c!==$tables[1];$c=$c->nextSibling){
+            if($c->nodeType===XML_ELEMENT_NODE&&$c->localName==='p'&&trim($c->textContent)==='')$between01[]=$c;
+        }
+        foreach(array_slice($between01,1)as$p)$body->removeChild($p);
         // Page 1: Tables 0 & 1. Place a clean page break between Table 1 and Table 2.
         for($n=$tables[1]->nextSibling;$n&&$n!==$tables[2];$n=$next){$next=$n->nextSibling;$body->removeChild($n);}
         $pbP1=$doc->createElementNS(APP_WORD_NS,'w:p');$pbR1=$doc->createElementNS(APP_WORD_NS,'w:r');$pbBr1=$doc->createElementNS(APP_WORD_NS,'w:br');
@@ -74,8 +108,10 @@ function app_generate_docx(array $data,string $ref,string $output): void {
         for($n=$tables[4]->nextSibling;$n&&$n!==$tables[5];$n=$next){$next=$n->nextSibling;$body->removeChild($n);}
         $pbP2=$doc->createElementNS(APP_WORD_NS,'w:p');$pbR2=$doc->createElementNS(APP_WORD_NS,'w:r');$pbBr2=$doc->createElementNS(APP_WORD_NS,'w:br');
         $pbBr2->setAttributeNS(APP_WORD_NS,'w:type','page');$pbR2->appendChild($pbBr2);$pbP2->appendChild($pbR2);$body->insertBefore($pbP2,$tables[5]);
-        // Pages 3 & 4: Table 5. Clean up spacer paragraphs between Table 5 and Table 6 so Table 6 starts directly on Page 5.
+        // Pages 3 & 4: Table 5. Clean up spacer paragraphs between Table 5 and Table 6 and place page break so Table 6 starts directly on Page 5.
         for($n=$tables[5]->nextSibling;$n&&$n!==$tables[6];$n=$next){$next=$n->nextSibling;$body->removeChild($n);}
+        $pbP5=$doc->createElementNS(APP_WORD_NS,'w:p');$pbR5=$doc->createElementNS(APP_WORD_NS,'w:r');$pbBr5=$doc->createElementNS(APP_WORD_NS,'w:br');
+        $pbBr5->setAttributeNS(APP_WORD_NS,'w:type','page');$pbR5->appendChild($pbBr5);$pbP5->appendChild($pbR5);$body->insertBefore($pbP5,$tables[6]);
         // The original floating landscape table starts under the header logo.
         // Preserve clean flow: unfloat Table 7, remove redundant page breaks, and tighten margins.
         foreach(iterator_to_array($tables[7]->getElementsByTagNameNS(APP_WORD_NS,'tblpPr'))as$p)$p->parentNode->removeChild($p);
