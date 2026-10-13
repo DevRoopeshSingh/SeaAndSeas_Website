@@ -121,7 +121,7 @@ function app_generate_docx(array $data,string $ref,string $output): void {
                     $table->insertBefore($row,$anchor);
                 }
                 $cells=app_children($row,'tc');
-                foreach($spec['fields']as$c=>$key){$v=$entries[$i][$key]??'';if(preg_match('/_(doi|doe|dob|anniv|from|to)$/',$key))$v=app_format_date($v);$cell=$cells[$c+($spec['offset']??0)];app_write_text($cell,$v);
+                foreach($spec['fields']as$c=>$key){$v=$entries[$i][$key]??'';if(preg_match('/_(doi|doe|dob|anniv|from|to)$/',$key))$v=app_format_date($v);if($group==='family'&&$c===0&&$v===''&&$i<$spec['capacity'])continue;$cell=$cells[$c+($spec['offset']??0)];app_write_text($cell,$v);
                     if($group==='sea_service'){
                         $run=$cell->getElementsByTagNameNS(APP_WORD_NS,'r')->item(0);$pr=app_children($run,'rPr')[0]??null;
                         if(!$pr){$pr=$doc->createElementNS(APP_WORD_NS,'w:rPr');$run->insertBefore($pr,$run->firstChild);}

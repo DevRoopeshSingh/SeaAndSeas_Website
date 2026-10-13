@@ -62,6 +62,13 @@ async function main(){
   assert.deepEqual(empty.errors,{});
   assert.equal(empty.matrix[certificateSpec.table].length,tables(original)[certificateSpec.table].length);
  });
+ check('Empty applicant preserves pre-printed family relationship labels in Table 1',()=>{
+  const familySpec=schema.repeats.family;
+  assert.equal(empty.matrix[familySpec.table][22][0],'Wife');
+  assert.equal(empty.matrix[familySpec.table][23][0],'Child (M/F)');
+  assert.equal(empty.matrix[familySpec.table][24][0],'Child (M/F)');
+  assert.equal(empty.matrix[familySpec.table][25][0],'Child (M/F)');
+ });
 
  const partial=await generate('partial-offshore',{...sample(),stcw_offshore_by:'Offshore Training Centre',stcw_offshore_doi:'2020-02-03',stcw_offshore_doe:'2025-02-03'});
  check('Offshore issuer and dates survive with a blank certificate number',()=>{
