@@ -13,21 +13,27 @@ function app_write_text(DOMNode $container,string $text): void {
     $doc=$container->ownerDocument;
     $paragraph=$container->localName==='p'?$container:(app_children($container,'p')[0]??null);
     if(!$paragraph)throw new RuntimeException('Template paragraph missing.');
-    $run=app_children($paragraph,'r')[0]??null;
-    $properties=$run?(app_children($run,'rPr')[0]??null):null;
-    if(!$properties){$pPr=app_children($paragraph,'pPr')[0]??null;$properties=$pPr?(app_children($pPr,'rPr')[0]??null):null;}
-    $properties=$properties?->cloneNode(true);
+    $pPr=app_children($paragraph,'pPr')[0]??null;$pPrRPr=$pPr?(app_children($pPr,'rPr')[0]??null):null;
+    $run=app_children($paragraph,'r')[0]??null;$runRPr=$run?(app_children($run,'rPr')[0]??null):null;
+    $properties=($runRPr?:$pPrRPr)?->cloneNode(true);
+    if(!$properties)$properties=$doc->createElementNS(APP_WORD_NS,'w:rPr');
+    if($pPrRPr){
+        if(!app_children($properties,'rFonts')&&($f=app_children($pPrRPr,'rFonts')[0]??null))$properties->appendChild($f->cloneNode(true));
+        if(!app_children($properties,'sz')&&($s=app_children($pPrRPr,'sz')[0]??null))$properties->appendChild($s->cloneNode(true));
+    }
+    if($container->localName==='tc'){
+        if(!app_children($properties,'rFonts')){
+            $rf=$doc->createElementNS(APP_WORD_NS,'w:rFonts');$rf->setAttributeNS(APP_WORD_NS,'w:ascii','Arial Narrow');$rf->setAttributeNS(APP_WORD_NS,'w:hAnsi','Arial Narrow');$properties->appendChild($rf);
+        }
+        if(!app_children($properties,'sz')){
+            $sz=$doc->createElementNS(APP_WORD_NS,'w:sz');$sz->setAttributeNS(APP_WORD_NS,'w:val','18');$properties->appendChild($sz);
+        }
+    }
     foreach(iterator_to_array($paragraph->childNodes)as$child)if($child->localName!=='pPr')$paragraph->removeChild($child);
     if($container->localName==='tc')foreach(array_slice(app_children($container,'p'),1)as$p)$container->removeChild($p);
     $r=$doc->createElementNS(APP_WORD_NS,'w:r');if($properties)$r->appendChild($properties);
     $t=$doc->createElementNS(APP_WORD_NS,'w:t');$t->setAttributeNS('http://www.w3.org/XML/1998/namespace','xml:space','preserve');$t->appendChild($doc->createTextNode($text));$r->appendChild($t);$paragraph->appendChild($r);
-    // Exact template heights can hide multiline data. Keep the original height as a minimum.
-    if($container->localName==='tc'){
-        $row=$container->parentNode;
-        foreach($row->getElementsByTagNameNS(APP_WORD_NS,'trHeight')as$h)if($h->getAttributeNS(APP_WORD_NS,'hRule')==='exact')$h->setAttributeNS(APP_WORD_NS,'w:hRule','atLeast');
-        $pr=app_children($row,'trPr')[0]??$doc->createElementNS(APP_WORD_NS,'w:trPr');if(!$pr->parentNode)$row->insertBefore($pr,$row->firstChild);
-        if(!app_children($pr,'cantSplit'))$pr->appendChild($doc->createElementNS(APP_WORD_NS,'w:cantSplit'));
-    }
+    // Preserve template exact row heights and flow to keep document pagination compact.
 }
 function app_format_date(string $v): string {return $v!==''?(new DateTimeImmutable($v))->format('d-M-Y'):'';}
 function app_fill_slots(DOMNode $paragraph,array $values): void {
@@ -60,12 +66,18 @@ function app_generate_docx(array $data,string $ref,string $output): void {
         foreach([3,4]as$r)for($c=0;$c<4;$c++)foreach(iterator_to_array($matrix[3][$r][$c]->getElementsByTagNameNS(APP_WORD_NS,'vMerge'))as$merge)$merge->parentNode->removeChild($merge);
         foreach([1=>'Date of Issue',2=>'Place of Issue',3=>'Date of Expiry']as$c=>$label)app_write_text($matrix[3][3][$c],$label);
         // The original floating landscape table starts under the header logo.
-        // Preserve header parts, widths and orientation; allow the table to flow below it.
+        // Preserve clean flow: unfloat Table 7, remove redundant page breaks, and tighten margins.
         foreach(iterator_to_array($tables[7]->getElementsByTagNameNS(APP_WORD_NS,'tblpPr'))as$p)$p->parentNode->removeChild($p);
+        for($node=$tables[7]->previousSibling;$node;$node=$node->previousSibling){
+            if($node->localName==='p'){
+                foreach(iterator_to_array($node->getElementsByTagNameNS(APP_WORD_NS,'br'))as$br)if($br->getAttributeNS(APP_WORD_NS,'type')==='page')$br->parentNode->removeChild($br);
+                break;
+            }
+        }
         foreach($doc->getElementsByTagNameNS(APP_WORD_NS,'sectPr')as$section){
             $size=app_children($section,'pgSz')[0]??null;
             if($size?->getAttributeNS(APP_WORD_NS,'orient')==='landscape'){
-                $margin=app_children($section,'pgMar')[0];$margin->setAttributeNS(APP_WORD_NS,'w:top','1800');$margin->setAttributeNS(APP_WORD_NS,'w:bottom','720');
+                $margin=app_children($section,'pgMar')[0];$margin->setAttributeNS(APP_WORD_NS,'w:top','720');$margin->setAttributeNS(APP_WORD_NS,'w:bottom','480');
             }
         }
         $values=[];
