@@ -165,19 +165,106 @@ function app_generate_docx(array $data,string $ref,string $output,?string $photo
                 break;
             }
         }
+        $t7ColWidths=[800,2050,1500,800,1100,900,900,1100,850,1050,1250,1250,950,1506];
+        $t7Grid=app_children($tables[7],'tblGrid')[0]??null;
+        if($t7Grid){
+            $gridCols=app_children($t7Grid,'gridCol');
+            foreach($t7ColWidths as$cIdx=>$wVal){
+                if(isset($gridCols[$cIdx]))$gridCols[$cIdx]->setAttributeNS(APP_WORD_NS,'w:w',(string)$wVal);
+            }
+        }
+        $t7Headers=[
+            ['S.No.'],
+            ['Name of','Owners / Manager'],
+            ['Name of','Vessel'],
+            ['Built','Year'],
+            ['Type'],
+            ['GRT'],
+            ['DWT'],
+            ['Engine','Type'],
+            ['BHP'],
+            ['Rank'],
+            ['From'],
+            ['To'],
+            ['Total','MM/DD'],
+            ['Reason for','S/Off']
+        ];
         foreach(app_children($tables[7],'tr')as$rIdx=>$row){
             if($rIdx<2)continue;
             $trPr=app_children($row,'trPr')[0]??$doc->createElementNS(APP_WORD_NS,'w:trPr');
             if(!$trPr->parentNode)$row->insertBefore($trPr,$row->firstChild);
             $trH=app_children($trPr,'trHeight')[0]??$doc->createElementNS(APP_WORD_NS,'w:trHeight');
-            $trH->setAttributeNS(APP_WORD_NS,'w:val','380');$trH->setAttributeNS(APP_WORD_NS,'w:hRule','atLeast');
             if(!$trH->parentNode)$trPr->appendChild($trH);
-            foreach(app_children($row,'tc')as$tc){
-                $tcPr=app_children($tc,'tcPr')[0]??$doc->createElementNS(APP_WORD_NS,'w:tcPr');
-                if(!$tcPr->parentNode)$tc->insertBefore($tcPr,$tc->firstChild);
-                $va=app_children($tcPr,'vAlign')[0]??$doc->createElementNS(APP_WORD_NS,'w:vAlign');
-                $va->setAttributeNS(APP_WORD_NS,'w:val','center');
-                if(!$va->parentNode)$tcPr->appendChild($va);
+            if($rIdx===2){
+                $trH->setAttributeNS(APP_WORD_NS,'w:val','820');
+                $trH->setAttributeNS(APP_WORD_NS,'w:hRule','atLeast');
+                $cells=app_children($row,'tc');
+                foreach($cells as$cIdx=>$tc){
+                    $tcPr=app_children($tc,'tcPr')[0]??$doc->createElementNS(APP_WORD_NS,'w:tcPr');
+                    if(!$tcPr->parentNode)$tc->insertBefore($tcPr,$tc->firstChild);
+                    $tcW=app_children($tcPr,'tcW')[0]??$doc->createElementNS(APP_WORD_NS,'w:tcW');
+                    $tcW->setAttributeNS(APP_WORD_NS,'w:w',(string)$t7ColWidths[$cIdx]);
+                    $tcW->setAttributeNS(APP_WORD_NS,'w:type','dxa');
+                    if(!$tcW->parentNode)$tcPr->appendChild($tcW);
+                    $va=app_children($tcPr,'vAlign')[0]??$doc->createElementNS(APP_WORD_NS,'w:vAlign');
+                    $va->setAttributeNS(APP_WORD_NS,'w:val','center');
+                    if(!$va->parentNode)$tcPr->appendChild($va);
+                    $tcMar=app_children($tcPr,'tcMar')[0]??$doc->createElementNS(APP_WORD_NS,'w:tcMar');
+                    if(!$tcMar->parentNode)$tcPr->appendChild($tcMar);
+                    foreach(['top'=>'40','bottom'=>'40','left'=>'25','right'=>'25']as$side=>$val){
+                        $m=app_children($tcMar,$side)[0]??$doc->createElementNS(APP_WORD_NS,'w:'.$side);
+                        $m->setAttributeNS(APP_WORD_NS,'w:w',$val);
+                        $m->setAttributeNS(APP_WORD_NS,'w:type','dxa');
+                        if(!$m->parentNode)$tcMar->appendChild($m);
+                    }
+                    while($tc->lastChild&&$tc->lastChild!==$tcPr)$tc->removeChild($tc->lastChild);
+                    $p=$doc->createElementNS(APP_WORD_NS,'w:p');
+                    $pPr=$doc->createElementNS(APP_WORD_NS,'w:pPr');
+                    $jc=$doc->createElementNS(APP_WORD_NS,'w:jc');$jc->setAttributeNS(APP_WORD_NS,'w:val','center');$pPr->appendChild($jc);
+                    $sp=$doc->createElementNS(APP_WORD_NS,'w:spacing');$sp->setAttributeNS(APP_WORD_NS,'w:before','0');$sp->setAttributeNS(APP_WORD_NS,'w:after','0');$sp->setAttributeNS(APP_WORD_NS,'w:line','220');$sp->setAttributeNS(APP_WORD_NS,'w:lineRule','auto');$pPr->appendChild($sp);
+                    $p->appendChild($pPr);
+                    $lines=$t7Headers[$cIdx]??[''];
+                    foreach($lines as$lIdx=>$lineText){
+                        $r=$doc->createElementNS(APP_WORD_NS,'w:r');
+                        $rPr=$doc->createElementNS(APP_WORD_NS,'w:rPr');
+                        $rf=$doc->createElementNS(APP_WORD_NS,'w:rFonts');$rf->setAttributeNS(APP_WORD_NS,'w:ascii','Arial Narrow');$rf->setAttributeNS(APP_WORD_NS,'w:hAnsi','Arial Narrow');$rPr->appendChild($rf);
+                        $b=$doc->createElementNS(APP_WORD_NS,'w:b');$rPr->appendChild($b);
+                        $sz=$doc->createElementNS(APP_WORD_NS,'w:sz');$sz->setAttributeNS(APP_WORD_NS,'w:val','18');$rPr->appendChild($sz);
+                        $szCs=$doc->createElementNS(APP_WORD_NS,'w:szCs');$szCs->setAttributeNS(APP_WORD_NS,'w:val','18');$rPr->appendChild($szCs);
+                        $r->appendChild($rPr);
+                        if($lIdx>0){$br=$doc->createElementNS(APP_WORD_NS,'w:br');$r->appendChild($br);}
+                        $t=$doc->createElementNS(APP_WORD_NS,'w:t');$t->textContent=$lineText;
+                        if(str_starts_with($lineText,' ')||str_ends_with($lineText,' '))$t->setAttributeNS('http://www.w3.org/XML/1998/namespace','xml:space','preserve');
+                        $r->appendChild($t);
+                        $p->appendChild($r);
+                    }
+                    $tc->appendChild($p);
+                }
+            }else{
+                $trH->setAttributeNS(APP_WORD_NS,'w:val','380');
+                $trH->setAttributeNS(APP_WORD_NS,'w:hRule','atLeast');
+                $cells=app_children($row,'tc');
+                foreach($cells as$cIdx=>$tc){
+                    $tcPr=app_children($tc,'tcPr')[0]??$doc->createElementNS(APP_WORD_NS,'w:tcPr');
+                    if(!$tcPr->parentNode)$tc->insertBefore($tcPr,$tc->firstChild);
+                    if(isset($t7ColWidths[$cIdx])){
+                        $tcW=app_children($tcPr,'tcW')[0]??$doc->createElementNS(APP_WORD_NS,'w:tcW');
+                        $tcW->setAttributeNS(APP_WORD_NS,'w:w',(string)$t7ColWidths[$cIdx]);
+                        $tcW->setAttributeNS(APP_WORD_NS,'w:type','dxa');
+                        if(!$tcW->parentNode)$tcPr->appendChild($tcW);
+                    }
+                    $va=app_children($tcPr,'vAlign')[0]??$doc->createElementNS(APP_WORD_NS,'w:vAlign');
+                    $va->setAttributeNS(APP_WORD_NS,'w:val','center');
+                    if(!$va->parentNode)$tcPr->appendChild($va);
+                    $tcMar=app_children($tcPr,'tcMar')[0]??$doc->createElementNS(APP_WORD_NS,'w:tcMar');
+                    if(!$tcMar->parentNode)$tcPr->appendChild($tcMar);
+                    foreach(['top'=>'30','bottom'=>'30','left'=>'25','right'=>'25']as$side=>$val){
+                        $m=app_children($tcMar,$side)[0]??$doc->createElementNS(APP_WORD_NS,'w:'.$side);
+                        $m->setAttributeNS(APP_WORD_NS,'w:w',$val);
+                        $m->setAttributeNS(APP_WORD_NS,'w:type','dxa');
+                        if(!$m->parentNode)$tcMar->appendChild($m);
+                    }
+                }
             }
         }
         foreach($doc->getElementsByTagNameNS(APP_WORD_NS,'sectPr')as$i=>$section){
@@ -221,11 +308,10 @@ function app_generate_docx(array $data,string $ref,string $output,?string $photo
                         $run=$cell->getElementsByTagNameNS(APP_WORD_NS,'r')->item(0);$pr=app_children($run,'rPr')[0]??null;
                         if(!$pr){$pr=$doc->createElementNS(APP_WORD_NS,'w:rPr');$run->insertBefore($pr,$run->firstChild);}
                         $size=app_children($pr,'sz')[0]??$doc->createElementNS(APP_WORD_NS,'w:sz');$size->setAttributeNS(APP_WORD_NS,'w:val','18');if(!$size->parentNode)$pr->appendChild($size);
-                        if(in_array($key,['sea_built','sea_grt','sea_dwt','sea_bhp'],true)){
-                            $tcPr=app_children($cell,'tcPr')[0];$margins=app_children($tcPr,'tcMar')[0]??$doc->createElementNS(APP_WORD_NS,'w:tcMar');
-                            if(!$margins->parentNode)$tcPr->appendChild($margins);
-                            foreach(['left','right']as$side){$margin=app_children($margins,$side)[0]??$doc->createElementNS(APP_WORD_NS,'w:'.$side);$margin->setAttributeNS(APP_WORD_NS,'w:w','20');$margin->setAttributeNS(APP_WORD_NS,'w:type','dxa');if(!$margin->parentNode)$margins->appendChild($margin);}
-                        }
+                        $sizeCs=app_children($pr,'szCs')[0]??$doc->createElementNS(APP_WORD_NS,'w:szCs');$sizeCs->setAttributeNS(APP_WORD_NS,'w:val','18');if(!$sizeCs->parentNode)$pr->appendChild($sizeCs);
+                        $tcPr=app_children($cell,'tcPr')[0];$margins=app_children($tcPr,'tcMar')[0]??$doc->createElementNS(APP_WORD_NS,'w:tcMar');
+                        if(!$margins->parentNode)$tcPr->appendChild($margins);
+                        foreach(['left','right']as$side){$margin=app_children($margins,$side)[0]??$doc->createElementNS(APP_WORD_NS,'w:'.$side);$margin->setAttributeNS(APP_WORD_NS,'w:w','20');$margin->setAttributeNS(APP_WORD_NS,'w:type','dxa');if(!$margin->parentNode)$margins->appendChild($margin);}
                     }
                 }
             }
