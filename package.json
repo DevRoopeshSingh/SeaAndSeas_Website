@@ -9,6 +9,7 @@
     "build": "node scripts/check-application.js --build",
     "test": "node tests/frontend.test.js && node tests/docx-regression.test.js && node tests/application.test.js",
     "check:runtime": "php scripts/application-preflight.php",
+    "seed:local": "php scripts/seed-local-sample-data.php",
     "package:production": "npm run build && node scripts/package-production.js"
   },
   "dependencies": {
