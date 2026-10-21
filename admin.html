@@ -335,6 +335,44 @@
       margin-bottom: 14px;
       display: none;
     }
+    /* Switch Toggle */
+    .switch-toggle {
+      position: relative;
+      display: inline-block;
+      width: 44px;
+      height: 24px;
+    }
+    .switch-toggle input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+    .switch-slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background-color: #334155;
+      transition: .3s;
+      border-radius: 24px;
+    }
+    .switch-slider:before {
+      position: absolute;
+      content: "";
+      height: 18px;
+      width: 18px;
+      left: 3px;
+      bottom: 3px;
+      background-color: white;
+      transition: .3s;
+      border-radius: 50%;
+    }
+    .switch-toggle input:checked + .switch-slider {
+      background-color: var(--admin-lime);
+    }
+    .switch-toggle input:checked + .switch-slider:before {
+      transform: translateX(20px);
+      background-color: #0b192c;
+    }
   </style>
 </head>
 <body>
@@ -350,6 +388,7 @@
       </div>
       <div class="admin-user">
         <span>Officer: <strong style="color:var(--admin-lime);">Superintendent Admin</strong></span>
+        <button type="button" class="btn-action" id="settingsBtn" style="padding:6px 14px;font-size:12px;">⚙️ Intake Settings</button>
         <button type="button" class="btn-logout" id="logoutBtn">Logout</button>
       </div>
     </header>
@@ -470,6 +509,61 @@
     </div>
   </div>
 
-  <script src="js/admin.js?v=20261006-admin-fix"></script>
+  <!-- INTAKE SETTINGS MODAL -->
+  <div id="settingsModal" class="modal-overlay" style="display:none;">
+    <div class="modal-box" style="max-width:560px;">
+      <div class="modal-header">
+        <div>
+          <h3>⚙️ Application Portal Intake Settings</h3>
+          <span style="font-size:12px;color:var(--admin-sub);">Configure optional and mandatory intake components for applicants</span>
+        </div>
+        <button type="button" class="btn-close" id="closeSettingsBtn">&times;</button>
+      </div>
+      <div class="modal-body">
+        <form id="settingsForm">
+          <div style="background:var(--admin-card);border:1px solid var(--admin-border);padding:16px;border-radius:6px;margin-bottom:16px;">
+            <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px;">
+              <div>
+                <strong style="color:#fff;font-size:14px;display:block;margin-bottom:4px;">📷 Applicant Passport Photograph Upload</strong>
+                <p style="color:var(--admin-sub);font-size:12px;margin:0 0 6px;">
+                  When enabled, Step 1 displays the passport photo uploader with automated face detection and embeds the photo in the generated Form RPS 01-A document.
+                </p>
+                <span class="admin-badge" id="photoStatusTag" style="font-size:10px;">Default: OFF</span>
+              </div>
+              <label class="switch-toggle" style="position:relative;display:inline-block;width:44px;height:24px;flex-shrink:0;">
+                <input type="checkbox" id="settingPhotoToggle">
+                <span class="switch-slider"></span>
+              </label>
+            </div>
+          </div>
+
+          <div style="background:var(--admin-card);border:1px solid var(--admin-border);padding:16px;border-radius:6px;margin-bottom:20px;">
+            <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px;">
+              <div>
+                <strong style="color:#fff;font-size:14px;display:block;margin-bottom:4px;">✍️ Digital Signature Component</strong>
+                <p style="color:var(--admin-sub);font-size:12px;margin:0 0 6px;">
+                  When enabled, Step 7 displays the interactive touch/mouse canvas signature pad and image uploader. When disabled, applicants provide their standard legal typed name acknowledgement.
+                </p>
+                <span class="admin-badge" id="sigStatusTag" style="font-size:10px;">Default: OFF</span>
+              </div>
+              <label class="switch-toggle" style="position:relative;display:inline-block;width:44px;height:24px;flex-shrink:0;">
+                <input type="checkbox" id="settingSigToggle">
+                <span class="switch-slider"></span>
+              </label>
+            </div>
+          </div>
+
+          <div id="settingsFeedback" style="display:none;margin-bottom:14px;padding:10px;border-radius:4px;font-size:12px;"></div>
+
+          <div style="display:flex;justify-content:flex-end;gap:10px;">
+            <button type="button" class="btn-action" id="cancelSettingsBtn" style="background:transparent;border-color:var(--admin-border);color:var(--admin-sub);">Cancel</button>
+            <button type="submit" class="btn-action" id="saveSettingsBtn" style="background:var(--admin-lime);color:#0b192c;font-weight:700;">Save Changes</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/admin.js?v=20261021-settings"></script>
 </body>
 </html>

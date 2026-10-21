@@ -25,4 +25,7 @@ CREATE TABLE IF NOT EXISTS rate_limits (
 CREATE TABLE IF NOT EXISTS application_notifications (
  application_id TEXT PRIMARY KEY, attempts INTEGER NOT NULL DEFAULT 0, sent_at TEXT
 );
+CREATE TABLE IF NOT EXISTS system_settings (
+ key TEXT PRIMARY KEY, value TEXT NOT NULL, updated_at TEXT NOT NULL
+);
 PRAGMA user_version = 1;

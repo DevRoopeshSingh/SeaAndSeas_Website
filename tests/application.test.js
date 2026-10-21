@@ -18,8 +18,11 @@ function sample(all=false){
  for(const[g,s]of Object.entries(schema.repeats))data[s.key]=JSON.stringify(groups[g]);return data;
 }
 const cv=Buffer.from('%PDF-1.4\n1 0 obj\n<< /Type /Catalog >>\nendobj\n%%EOF');
-async function submit(data,key=crypto.randomUUID(),file=cv,name='Arjun_CV.pdf'){
+async function submit(data,key=crypto.randomUUID(),file=cv,name='Arjun_CV.pdf',photo=null,sigData=null,sigFile=null){
  const body=new FormData();for(const[k,v]of Object.entries(data))body.set(k,v);body.set('application_type','full_rps_01_a');body.set('cv_file',new Blob([file],{type:'application/pdf'}),name);
+ if(photo)body.set('applicant_photo',new Blob([photo.buffer],{type:photo.type||'image/jpeg'}),photo.name||'photo.jpg');
+ if(sigData)body.set('signature_data',sigData);
+ if(sigFile)body.set('signature_file',new Blob([sigFile.buffer],{type:sigFile.type||'image/png'}),sigFile.name||'signature.png');
  const r=await fetch('http://127.0.0.1:'+port+'/submit_application.php',{method:'POST',headers:{'Idempotency-Key':key},body});return {status:r.status,body:await r.json()};
 }
 async function api(route,body,token=csrf){const r=await fetch('http://127.0.0.1:'+port+'/api/'+route,{method:body?'POST':'GET',headers:{...(cookie?{Cookie:cookie}:{}),...(body?{'Content-Type':'application/json','X-CSRF-Token':token}:{})},...(body?{body:JSON.stringify(body)}:{})});if(r.headers.get('set-cookie'))cookie=r.headers.get('set-cookie').split(';')[0];return {status:r.status,body:await r.json(),setCookie:r.headers.get('set-cookie')};}
@@ -35,7 +38,7 @@ async function main(){
  await start();
  check('IIS denies legacy applicant records and QA files while allowing the public schema',()=>{const config=fs.readFileSync(path.join(root,'web.config'),'utf8');const pattern=/<rule name="Block application internals"[\s\S]*?<match url="([^"]+)"/.exec(config)[1];const deny=new RegExp(pattern,'i');for(const route of['applications_roster.json','test-output/sample-application.docx','scratch/qa.html','.env','uploads/cv.pdf','includes/application_bootstrap.php'])assert.ok(deny.test(route),route);for(const route of['js/application-schema.json','api.php','download_application.php','apply.html','admin.html'])assert.ok(!deny.test(route),route);});
  const html=fs.readFileSync(path.join(root,'apply.html'),'utf8');const repeatFields=new Set(Object.values(schema.repeats).flatMap(s=>s.fields));
- check('Every form field has a mapping',()=>{for(const m of html.matchAll(/<(?:input|select|textarea)\b[^>]*name="([^"]+)"/g)){const k=m[1];assert.ok(schema.fields[k]||repeatFields.has(k.replace(/_\d+$/,''))||['_hp_trap','cv_file'].includes(k),k);}for(const k of Object.keys(schema.fields))assert.ok(html.includes('name="'+k+'"'),k);});
+ check('Every form field has a mapping',()=>{for(const m of html.matchAll(/<(?:input|select|textarea)\b[^>]*name="([^"]+)"/g)){const k=m[1];assert.ok(schema.fields[k]||repeatFields.has(k.replace(/_\d+$/,''))||['_hp_trap','cv_file','applicant_photo','signature_file','signature_data'].includes(k),k);}for(const k of Object.keys(schema.fields))assert.ok(html.includes('name="'+k+'"'),k);});
  const basic=sample();check('Client validation accepts realistic optional blanks',()=>assert.deepEqual(Validation.validate(basic,schema),{}));
  const key=crypto.randomUUID();const result=await submit(basic,key);check('Applicant saved and DOCX generated',()=>{assert.equal(result.status,200,JSON.stringify(result.body));assert.equal(result.body.success,true);assert.match(result.body.refNumber,/^SS-APP-\d{4}-[A-F0-9]{12}$/);});
  let response=await fetch('http://127.0.0.1:'+port+result.body.downloadUrl);const buffer=Buffer.from(await response.arrayBuffer());fs.writeFileSync(path.join(output,'sample-application.docx'),buffer);
@@ -51,6 +54,11 @@ async function main(){
  const medicalYes={...basic};for(const k of['medical_signoff','medical_unfit_disease','medical_addiction','medical_psychiatric','med_malaria','med_diabetes','med_epilepsy','med_nervous','med_hepatitis'])medicalYes[k]=' \tYes \n';
  const medicalWhitespace=await submit(medicalYes);check('All nine normalized medical Yes answers still require their details',()=>{assert.equal(medicalWhitespace.status,422);for(const k of['med_vessel_name','med_occurrence_date','med_description','medical_unfit_disease_details','medical_addiction_details','medical_psychiatric_details','med_malaria_details','med_diabetes_details','med_epilepsy_details','med_nervous_details','med_hepatitis_details'])assert.ok(medicalWhitespace.body.errors[k],k);});
  const badFile=await submit(basic,crypto.randomUUID(),Buffer.from('not a pdf'));check('Spoofed CV rejected',()=>assert.equal(badFile.status,422));
+ const badPhoto=await submit(basic,crypto.randomUUID(),cv,'Arjun_CV.pdf',{buffer:Buffer.from('not an image'),type:'text/plain',name:'fake.jpg'});
+ check('Spoofed photo rejected',()=>assert.equal(badPhoto.status,422));
+ const badSig=await submit(basic,crypto.randomUUID(),cv,'Arjun_CV.pdf',null,'invalid-signature-data');
+ check('Spoofed signature rejected',()=>assert.equal(badSig.status,422));
+
  const tooMany=await submit({...basic,sea_service_json:JSON.stringify(Array(11).fill(JSON.parse(basic.sea_service_json)[0]))});check('More than ten vessels rejected',()=>assert.equal(tooMany.status,422));
  let unauth=await api('admin/applications');check('Unauthenticated staff API rejected',()=>assert.equal(unauth.status,401));
  const directUrl=route=>'http://127.0.0.1:'+port+'/api.php?route='+encodeURIComponent(route);
@@ -65,12 +73,34 @@ async function main(){
  const status=await api('admin/applications/'+id+'/status',{status:'shortlisted'});check('Authorized review update succeeds',()=>assert.equal(status.status,200));
  const download=await fetch('http://127.0.0.1:'+port+'/api/admin/applications/'+id+'/download/docx',{headers:{Cookie:cookie}});check('Staff DOCX download works',()=>assert.equal(download.status,200));
  direct=await fetch(directUrl('admin/applications/'+id+'/download/docx'),{headers:{Cookie:cookie}});check('Direct PHP staff DOCX download works',()=>assert.equal(direct.status,200));
+ const publicSettings=await (await fetch('http://127.0.0.1:'+port+'/api.php?route=settings')).json();
+ check('Public intake settings default to off',()=>{assert.equal(publicSettings.success,true);assert.equal(publicSettings.settings.enable_applicant_photo,false);assert.equal(publicSettings.settings.enable_applicant_signature,false);});
+ const unauthSettings=await fetch('http://127.0.0.1:'+port+'/api.php?route=admin/settings');
+ check('Unauthenticated admin settings request denied',()=>assert.equal(unauthSettings.status,401));
+ const updateSettings=await api('admin/settings',{enable_applicant_photo:true,enable_applicant_signature:true});
+ check('Staff can update intake settings',()=>{assert.equal(updateSettings.status,200);assert.equal(updateSettings.body.settings.enable_applicant_photo,true);assert.equal(updateSettings.body.settings.enable_applicant_signature,true);});
+ const refreshedPublic=await (await fetch('http://127.0.0.1:'+port+'/api.php?route=settings')).json();
+ check('Public settings reflect staff updates',()=>{assert.equal(refreshedPublic.settings.enable_applicant_photo,true);assert.equal(refreshedPublic.settings.enable_applicant_signature,true);});
+ await api('admin/settings',{enable_applicant_photo:false,enable_applicant_signature:false});
  for(const route of['/data/applications.db','/storage/applications/test.docx','/uploads/cv.pdf','/includes/application_bootstrap.php','/.env','/NEW-APPLICATION-FORMAT-1.docx','/applications_roster.json','/test-output/sample-application.docx','/scratch/qa.html']){const r=await fetch('http://127.0.0.1:'+port+route);assert.equal(r.status,403,route);}passes++;console.log('PASS Private routes are blocked');
  const full=sample(true);check('Client validates every mapped populated field',()=>assert.deepEqual(Validation.validate(full,schema),{}));const fullResult=await submit(full);check('Full template application submitted',()=>assert.equal(fullResult.status,200,JSON.stringify(fullResult.body)));
  const fullBuffer=Buffer.from(await(await fetch('http://127.0.0.1:'+port+fullResult.body.downloadUrl)).arrayBuffer());fs.writeFileSync(path.join(output,'full-application.docx'),fullBuffer);
  const fullZip=await Zip.loadAsync(fullBuffer);const fullDoc=new DOMParser().parseFromString(await fullZip.file('word/document.xml').async('string'),'text/xml');const fullMatrix=matrix(fullDoc);
  check('Every mapped scalar lands in its exact cell',()=>{for(const[k,s]of Object.entries(schema.fields)){if(!s.cell||!full[k])continue;const[t,originalRow,c]=s.cell;let r=originalRow;for(const spec of Object.values(schema.repeats))if(spec.table===t&&originalRow>=spec.start+spec.capacity)r+=Math.max(0,JSON.parse(full[spec.key]).length-spec.capacity);const v=s.type==='date'?new Date(full[k]).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric',timeZone:'UTC'}).replaceAll(' ','-'):full[k];assert.ok(text(fullMatrix[t][r][c]).includes(v),k+' -> '+text(fullMatrix[t][r][c]));}});
  const overflow=sample();overflow.family_json=JSON.stringify(Array.from({length:6},(_,i)=>({...JSON.parse(basic.family_json)[0],fam_name:'Family member '+(i+1)})));overflow.education_json=JSON.stringify(Array.from({length:5},(_,i)=>({...JSON.parse(basic.education_json)[0],edu_school:'Maritime school '+(i+1)})));const over=await submit(overflow);check('Family and education overflow supported',()=>assert.equal(over.status,200,JSON.stringify(over.body)));const overZip=await Zip.loadAsync(Buffer.from(await(await fetch('http://127.0.0.1:'+port+over.body.downloadUrl)).arrayBuffer()));const overXml=await overZip.file('word/document.xml').async('string');check('Overflow records in cloned rows are not lost',()=>{assert.ok(overXml.includes('Family member 6'));assert.ok(overXml.includes('Maritime school 5'));});fs.writeFileSync(path.join(output,'overflow-application.docx'),await overZip.generateAsync({type:'nodebuffer'}));
+ const photoPath=path.join(output,'test-photo.jpg');const sigPath=path.join(output,'test-sig.png');
+ if(!fs.existsSync(photoPath)||!fs.existsSync(sigPath)){
+   spawnSync('php',['-r',`$im=imagecreatetruecolor(200,250);imagefilledrectangle($im,0,0,200,250,imagecolorallocate($im,240,240,240));imagejpeg($im,'${photoPath.replace(/'/g,"\\'")}');$s=imagecreatetruecolor(200,60);imagefilledrectangle($s,0,0,200,60,imagecolorallocate($s,255,255,255));imageline($s,20,30,180,30,imagecolorallocate($s,10,40,100));imagepng($s,'${sigPath.replace(/'/g,"\\'")}')`]);
+ }
+ const photoBuf=fs.readFileSync(photoPath);const sigBuf=fs.readFileSync(sigPath);
+ const withMedia=await submit(basic,crypto.randomUUID(),cv,'Arjun_CV.pdf',{buffer:photoBuf,type:'image/jpeg',name:'passport.jpg'},'data:image/png;base64,'+sigBuf.toString('base64'));
+ check('Submission with applicant photo and digital signature succeeds',()=>{assert.equal(withMedia.status,200);assert.equal(withMedia.body.success,true);});
+ const mediaDocResp=await fetch('http://127.0.0.1:'+port+withMedia.body.downloadUrl);
+ const mediaZip=await Zip.loadAsync(Buffer.from(await mediaDocResp.arrayBuffer()));
+ check('DOCX embeds applicant photo and signature media',()=>{
+   assert.ok(mediaZip.file('word/media/applicant_photo.jpg'));
+   assert.ok(mediaZip.file('word/media/applicant_signature.png'));
+ });
  // Seed fictional completed records directly so pagination regressions do not consume the applicant rate limit.
  const fixtureStatuses=[...Array(52).fill('submitted'),...Array(4).fill('under_review'),...Array(3).fill('shortlisted'),'rejected'];
  const paginationSeed=spawnSync('php',['-r',`$d=new PDO('sqlite:'.$argv[1]);$d->setAttribute(PDO::ATTR_ERRMODE,PDO::ERRMODE_EXCEPTION);$s=$d->prepare("INSERT INTO applications(id,ref_number,full_name,position_applied,email,phone,indos_number,status,schema_version,data_json,idempotency_hash,payload_hash,submitted_at,updated_at,docx_path) VALUES(?,?,?,?,?,?,?,?,1,'{}',?,?,?,?,?)");foreach(json_decode($argv[2],true) as $i=>$status){$id=bin2hex(random_bytes(16));$s->execute([$id,'QA-PAGINATION-'.$i,'Pagination review fixture '.str_pad((string)$i,2,'0',STR_PAD_LEFT),'Master','pagination-'.$i.'@example.test','+91 8765432100','QA-PAGINATION-'.$i,$status,bin2hex(random_bytes(32)),hash('sha256','fixture-'.$i),'2026-10-01T00:00:00+00:00','2026-10-01T00:00:00+00:00','files/'.$id.'/application.docx']);}`,path.join(temp,'private','applications.sqlite'),JSON.stringify(fixtureStatuses)],{encoding:'utf8'});

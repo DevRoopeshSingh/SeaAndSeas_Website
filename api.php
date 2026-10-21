@@ -24,9 +24,12 @@ try {
         session_regenerate_id(true);$_SESSION=['staff'=>$username,'expires'=>time()+8*3600,'csrf'=>bin2hex(random_bytes(32))];
         app_audit($db,null,'staff_login',$username);app_json(['success'=>true,'csrf'=>$_SESSION['csrf']]);
     }
+    if($route==='settings'&&$method==='GET')app_json(['success'=>true,'settings'=>app_get_settings()]);
     $staff=app_admin();
     if($route==='admin/me'&&$method==='GET')app_json(['success'=>true,'user'=>$staff,'role'=>'crewing_officer','csrf'=>$_SESSION['csrf']]);
+    if($route==='admin/settings'&&$method==='GET')app_json(['success'=>true,'settings'=>app_get_settings()]);
     if($method==='POST')app_csrf();
+    if($route==='admin/settings'&&$method==='POST'){$updated=app_save_settings($body);app_audit($db,null,'settings_update',$staff);app_json(['success'=>true,'settings'=>$updated]);}
     if($route==='admin/logout'&&$method==='POST'){$_SESSION=[];session_destroy();app_json(['success'=>true]);}
     if($route==='admin/applications'&&$method==='GET'){
         $where='1=1';$args=[];

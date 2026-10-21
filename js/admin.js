@@ -55,6 +55,18 @@
   const dossierBody = document.getElementById('dossierBody');
   const closeDossierBtn = document.getElementById('closeDossierBtn');
 
+  const settingsBtn = document.getElementById('settingsBtn');
+  const settingsModal = document.getElementById('settingsModal');
+  const closeSettingsBtn = document.getElementById('closeSettingsBtn');
+  const cancelSettingsBtn = document.getElementById('cancelSettingsBtn');
+  const settingsForm = document.getElementById('settingsForm');
+  const settingPhotoToggle = document.getElementById('settingPhotoToggle');
+  const settingSigToggle = document.getElementById('settingSigToggle');
+  const photoStatusTag = document.getElementById('photoStatusTag');
+  const sigStatusTag = document.getElementById('sigStatusTag');
+  const settingsFeedback = document.getElementById('settingsFeedback');
+  const saveSettingsBtn = document.getElementById('saveSettingsBtn');
+
   // Initialization
   document.addEventListener('DOMContentLoaded', () => {
     verifyAndLoad();
@@ -129,6 +141,94 @@
         dossierModal.style.display = 'none';
       }
     });
+
+    function updateToggleTags() {
+      if (photoStatusTag) {
+        photoStatusTag.textContent = settingPhotoToggle?.checked ? 'STATUS: ENABLED' : 'STATUS: DISABLED (OFF)';
+        photoStatusTag.style.borderColor = settingPhotoToggle?.checked ? 'var(--admin-lime)' : 'var(--admin-border)';
+        photoStatusTag.style.color = settingPhotoToggle?.checked ? 'var(--admin-lime)' : 'var(--admin-sub)';
+      }
+      if (sigStatusTag) {
+        sigStatusTag.textContent = settingSigToggle?.checked ? 'STATUS: ENABLED' : 'STATUS: DISABLED (OFF)';
+        sigStatusTag.style.borderColor = settingSigToggle?.checked ? 'var(--admin-lime)' : 'var(--admin-border)';
+        sigStatusTag.style.color = settingSigToggle?.checked ? 'var(--admin-lime)' : 'var(--admin-sub)';
+      }
+    }
+
+    settingPhotoToggle?.addEventListener('change', updateToggleTags);
+    settingSigToggle?.addEventListener('change', updateToggleTags);
+
+    async function openSettingsModal() {
+      if (settingsFeedback) settingsFeedback.style.display = 'none';
+      settingsModal.style.display = 'flex';
+      try {
+        const response = await fetch(apiUrl('admin/settings'));
+        const data = await responseData(response);
+        if (data && data.settings) {
+          if (settingPhotoToggle) settingPhotoToggle.checked = Boolean(data.settings.enable_applicant_photo);
+          if (settingSigToggle) settingSigToggle.checked = Boolean(data.settings.enable_applicant_signature);
+          updateToggleTags();
+        }
+      } catch (e) {
+        console.warn('Could not load current settings:', e);
+      }
+    }
+
+    function closeSettingsModal() {
+      settingsModal.style.display = 'none';
+    }
+
+    settingsBtn?.addEventListener('click', openSettingsModal);
+    closeSettingsBtn?.addEventListener('click', closeSettingsModal);
+    cancelSettingsBtn?.addEventListener('click', closeSettingsModal);
+    settingsModal?.addEventListener('click', (e) => {
+      if (e.target === settingsModal) closeSettingsModal();
+    });
+
+    settingsForm?.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (saveSettingsBtn) saveSettingsBtn.disabled = true;
+      if (settingsFeedback) {
+        settingsFeedback.style.display = 'block';
+        settingsFeedback.style.background = 'rgba(96, 165, 250, 0.15)';
+        settingsFeedback.style.color = '#93c5fd';
+        settingsFeedback.textContent = 'Saving intake settings...';
+      }
+      try {
+        const payload = {
+          enable_applicant_photo: Boolean(settingPhotoToggle?.checked),
+          enable_applicant_signature: Boolean(settingSigToggle?.checked)
+        };
+        const response = await fetch(apiUrl('admin/settings'), {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-Token': csrf
+          },
+          body: JSON.stringify(payload)
+        });
+        const data = await responseData(response);
+        if (data && data.success) {
+          if (settingsFeedback) {
+            settingsFeedback.style.background = 'rgba(167, 219, 40, 0.15)';
+            settingsFeedback.style.color = 'var(--admin-lime)';
+            settingsFeedback.textContent = '✓ Settings successfully saved! Changes apply immediately to the seafarer application form.';
+          }
+          updateToggleTags();
+          setTimeout(closeSettingsModal, 1500);
+        } else {
+          throw new Error(data.error || 'Failed to save settings.');
+        }
+      } catch (err) {
+        if (settingsFeedback) {
+          settingsFeedback.style.background = 'rgba(239, 68, 68, 0.15)';
+          settingsFeedback.style.color = '#fca5a5';
+          settingsFeedback.textContent = '⚠️ ' + (err.message || 'Error saving settings.');
+        }
+      } finally {
+        if (saveSettingsBtn) saveSettingsBtn.disabled = false;
+      }
+    });
   }
 
   async function verifyAndLoad() {
@@ -153,6 +253,7 @@
     csrf = '';
     rosterRequest++;
     dossierModal.style.display = 'none';
+    settingsModal.style.display = 'none';
     dossierBody.textContent = '';
     tableBody.textContent = '';
     updateStats({});

@@ -12,8 +12,20 @@ function app_submission(): never {
     $key=$_SERVER['HTTP_IDEMPOTENCY_KEY']??'';
     if(!preg_match('/^[a-zA-Z0-9-]{32,64}$/D',$key))app_json(['success'=>false,'error'=>'Refresh the application page before submitting.'],400);
     try{$ext=app_validate_upload($_FILES['cv_file']??[]);}catch(InvalidArgumentException $e){app_json(['success'=>false,'error'=>$e->getMessage(),'errors'=>['cv_file'=>$e->getMessage()]],422);}
+    $photoExt=null;
+    if(!empty($_FILES['applicant_photo']['tmp_name'])){
+        try{$photoExt=app_validate_photo($_FILES['applicant_photo']);}catch(InvalidArgumentException $e){app_json(['success'=>false,'error'=>$e->getMessage(),'errors'=>['applicant_photo'=>$e->getMessage()]],422);}
+    }
+    $sigRaw=null;
+    $sigInput=$_POST['signature_data']??null;
+    $sigFile=!empty($_FILES['signature_file']['tmp_name'])?$_FILES['signature_file']:null;
+    if($sigInput||$sigFile){
+        try{$sigRaw=app_validate_signature($sigInput,$sigFile);}catch(InvalidArgumentException $e){app_json(['success'=>false,'error'=>$e->getMessage(),'errors'=>['signature_data'=>$e->getMessage()]],422);}
+    }
     $db=app_db();$hash=hash('sha256',$key);
-    $payload=hash('sha256',json_encode($data,JSON_THROW_ON_ERROR).hash_file('sha256',$_FILES['cv_file']['tmp_name']));
+    $photoHash=!empty($_FILES['applicant_photo']['tmp_name'])?hash_file('sha256',$_FILES['applicant_photo']['tmp_name']):'';
+    $sigHash=$sigRaw?hash('sha256',$sigRaw):'';
+    $payload=hash('sha256',json_encode($data,JSON_THROW_ON_ERROR).hash_file('sha256',$_FILES['cv_file']['tmp_name']).$photoHash.$sigHash);
     $id=null;$folder=null;
     try {
         $db->beginTransaction();$s=$db->prepare('SELECT * FROM applications WHERE idempotency_hash=?');$s->execute([$hash]);$record=$s->fetch();
@@ -34,7 +46,17 @@ function app_submission(): never {
         if(!is_dir($folder)&&!mkdir($folder,0700))throw new RuntimeException('Cannot create private application directory.');
         $cv='files/'.$id.'/cv.'.$ext;
         if(!move_uploaded_file($_FILES['cv_file']['tmp_name'],app_root().'/'.$cv))throw new RuntimeException('CV storage failed.');
-        app_generate_docx($data,$ref,$folder.'/application.part');
+        $photoPath=null;
+        if($photoExt){
+            $photoPath=$folder.'/photo.'.$photoExt;
+            if(!move_uploaded_file($_FILES['applicant_photo']['tmp_name'],$photoPath))throw new RuntimeException('Photo storage failed.');
+        }
+        $sigPath=null;
+        if($sigRaw!==null){
+            $sigPath=$folder.'/signature.png';
+            if(file_put_contents($sigPath,$sigRaw)===false)throw new RuntimeException('Signature storage failed.');
+        }
+        app_generate_docx($data,$ref,$folder.'/application.part',$photoPath,$sigPath);
         if(!rename($folder.'/application.part',$folder.'/application.docx'))throw new RuntimeException('Document storage failed.');
         $token=bin2hex(random_bytes(32));$db->beginTransaction();
         $completed=$db->prepare("UPDATE applications SET status='submitted',cv_path=?,cv_name=?,cv_size=?,docx_path=?,download_hash=?,download_expires=?,updated_at=? WHERE id=? AND status='processing'");

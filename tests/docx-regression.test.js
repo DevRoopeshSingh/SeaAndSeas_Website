@@ -50,6 +50,7 @@ async function generate(name,input){
  return {errors:response.errors,outputPath,zip,document,matrix:tables(document)};
 }
 function declaration(document){return Array.from(document.getElementsByTagNameNS(wordNamespace,'p')).map(cellText).filter(value=>value.startsWith('I declare')||value.startsWith('I hereby')||value.startsWith('I understand'));}
+function declarationBlock(document){const ps=Array.from(document.getElementsByTagNameNS(wordNamespace,'p'));const s=ps.findIndex(p=>cellText(p).trim()==='DECLARATION');const e=ps.findIndex(p=>cellText(p).includes('SIGNED BY CREW'));return s>=0&&e>=s?ps.slice(s,e+1).map(cellText):[];}
 let passes=0;
 function check(name,fn){fn();passes++;console.log('PASS '+name);}
 
@@ -116,7 +117,7 @@ async function main(){
  });
 
  for(const name of Object.keys(source.files).filter(name=>!source.files[name].dir&&name!=='word/document.xml'))assert.deepEqual(await maxDocument.zip.file(name).async('nodebuffer'),await source.file(name).async('nodebuffer'),name);
- check('Logos, styles, relationships and legal declaration remain unchanged',()=>assert.deepEqual(declaration(maxDocument.document),declaration(original)));
+ check('Logos, styles, relationships and legal declaration remain unchanged',()=>{assert.deepEqual(declaration(maxDocument.document),declaration(original));assert.deepEqual(declarationBlock(maxDocument.document),declarationBlock(original));});
  console.log('\n'+passes+' DOCX regression checks passed.');
 }
 main().catch(error=>{console.error(error);process.exitCode=1;}).finally(()=>fs.rmSync(temp,{recursive:true,force:true}));

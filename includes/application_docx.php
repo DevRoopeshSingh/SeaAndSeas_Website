@@ -43,7 +43,7 @@ function app_fill_slots(DOMNode $paragraph,array $values): void {
     }
     if($slot!==count($values))throw new RuntimeException('Missing paragraph slots.');
 }
-function app_generate_docx(array $data,string $ref,string $output): void {
+function app_generate_docx(array $data,string $ref,string $output,?string $photoPath=null,?string $signaturePath=null): void {
     $schema=app_schema();$template=__DIR__.'/../'.$schema['template'];
     if(!is_file($template)||!hash_equals($schema['sha256'],hash_file('sha256',$template)))throw new RuntimeException('Template fingerprint mismatch. Inspect the mapping before replacement.');
     if(!copy($template,$output))throw new RuntimeException('Cannot stage document.');
@@ -51,6 +51,11 @@ function app_generate_docx(array $data,string $ref,string $output): void {
     try {
         $xml=$zip->getFromName('word/document.xml');$doc=new DOMDocument();
         if(!$doc->loadXML($xml,LIBXML_NONET)||$doc->doctype)throw new RuntimeException('Invalid template XML.');
+        $relsDoc=null;
+        if(($photoPath&&is_file($photoPath))||($signaturePath&&is_file($signaturePath))){
+            $relsXml=$zip->getFromName('word/_rels/document.xml.rels');
+            $relsDoc=new DOMDocument();$relsDoc->loadXML($relsXml);
+        }
         $tables=iterator_to_array($doc->getElementsByTagNameNS(APP_WORD_NS,'tbl'));
         if(count($tables)!==12)throw new RuntimeException('Unexpected template tables.');
         $matrix=[];foreach($tables as$t)$matrix[]=array_map(fn($r)=>app_children($r,'tc'),app_children($t,'tr'));
@@ -93,6 +98,25 @@ function app_generate_docx(array $data,string $ref,string $output): void {
                 $sp->setAttributeNS(APP_WORD_NS,'w:before','0');$sp->setAttributeNS(APP_WORD_NS,'w:after','0');
                 $sp->setAttributeNS(APP_WORD_NS,'w:line','100');$sp->setAttributeNS(APP_WORD_NS,'w:lineRule','exact');
                 if(!$sp->parentNode)$pPr->appendChild($sp);
+            }
+            if($photoPath&&is_file($photoPath)&&$relsDoc){
+                $pExt=strtolower(pathinfo($photoPath,PATHINFO_EXTENSION));
+                if(!in_array($pExt,['jpg','jpeg','png','webp'],true))$pExt='jpg';
+                $photoTarget='media/applicant_photo.'.$pExt;
+                $zip->addFromString('word/'.$photoTarget,file_get_contents($photoPath));
+                $rPhoto=$relsDoc->createElement('Relationship');
+                $rPhoto->setAttribute('Id','rIdPhoto');
+                $rPhoto->setAttribute('Type','http://schemas.openxmlformats.org/officeDocument/2006/relationships/image');
+                $rPhoto->setAttribute('Target',$photoTarget);
+                $relsDoc->documentElement->appendChild($rPhoto);
+                foreach($photoP->getElementsByTagName('txbxContent')as$tb){
+                    $pList=app_children($tb,'p');$tbP=$pList[0]??null;
+                    if(!$tbP){$tbP=$doc->createElementNS(APP_WORD_NS,'w:p');$tb->appendChild($tbP);}
+                    foreach(iterator_to_array($tbP->childNodes)as$ch)if($ch->localName!=='pPr')$tbP->removeChild($ch);
+                    $frag=$doc->createDocumentFragment();
+                    $frag->appendXML('<w:r xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><w:drawing><wp:inline distT="0" distB="0" distL="0" distR="0"><wp:extent cx="1169670" cy="1286510"/><wp:effectExtent l="0" t="0" r="0" b="0"/><wp:docPr id="101" name="Applicant Photo"/><wp:cNvGraphicFramePr><a:graphicFrameLocks noChangeAspect="1"/></wp:cNvGraphicFramePr><a:graphic><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture"><pic:pic><pic:nvPicPr><pic:cNvPr id="101" name="Applicant Photo"/><pic:cNvPicPr><a:picLocks noChangeAspect="1"/></pic:cNvPicPr></pic:nvPicPr><pic:blipFill><a:blip r:embed="rIdPhoto"/><pic:stretch><a:fillRect/></pic:stretch></pic:blipFill><pic:spPr bwMode="auto"><a:xfrm><a:off x="0" y="0"/><a:ext cx="1169670" cy="1286510"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></pic:spPr></pic:pic></a:graphicData></a:graphic></wp:inline></w:drawing></w:r>');
+                    $tbP->appendChild($frag);
+                }
             }
         }
         $between01=[];
@@ -214,10 +238,9 @@ function app_generate_docx(array $data,string $ref,string $output): void {
                 foreach($p->getElementsByTagNameNS(APP_WORD_NS,'t')as$t)if($t->textContent==='Wages: _')$t->textContent='Wages: ';
                 app_fill_slots($p,[$data['last_drawn_wages'],$data['expected_wages']]);$foundWages=true;
             }
-            if(str_contains($text,'RECEIVED BY')&&str_contains($text,'___________')){
-                app_fill_slots($p,[app_format_date($data['signature_date']),$data['digital_signature_name']]);$foundSignature=true;
+            if(str_contains($text,'RECEIVED BY')){
+                $foundSignature=true;
             }
-            if(str_contains($text,'SIGNED BY CREW')&&isset($paragraphs[$i+1]))app_write_text($paragraphs[$i+1],'Place: '.$data['signature_place'].' | Application: '.$ref.' | Typed applicant acknowledgement');
         }
         if(!$foundWages||!$foundSignature)throw new RuntimeException('Missing wage/signature slots.');
         // Format Table 5 across Pages 3 and 4: utilize unused bottom space on Page 4 with 9pt text and comfortable 340 dxa row height
@@ -305,17 +328,23 @@ function app_generate_docx(array $data,string $ref,string $output): void {
                 }
             }
         }
-        // Clean up empty spacer paragraphs between Declaration and Signatures so they fit together on Page 8
-        $declFound=false;$sigFound=false;$emptyPs=[];
-        foreach(iterator_to_array($body->childNodes)as$child){
-            if($child->localName==='tbl'&&$child===$tables[11]){$declFound=false;}
-            $text=app_doc_text($child);
-            if(str_contains($text,'DECLARATION')){$declFound=true;}
-            elseif(str_contains($text,'RECEIVED BY')){$sigFound=true;}
-            elseif($declFound&&!$sigFound&&$child->localName==='p'&&trim($text)===''){$emptyPs[]=$child;}
-            elseif($sigFound&&$child->localName==='p'&&trim($text)===''){$emptyPs[]=$child;}
+        if($signaturePath&&is_file($signaturePath)&&$relsDoc){
+            $sigTarget='media/applicant_signature.png';
+            $zip->addFromString('word/'.$sigTarget,file_get_contents($signaturePath));
+            $rSig=$relsDoc->createElement('Relationship');
+            $rSig->setAttribute('Id','rIdSignature');
+            $rSig->setAttribute('Type','http://schemas.openxmlformats.org/officeDocument/2006/relationships/image');
+            $rSig->setAttribute('Target',$sigTarget);
+            $relsDoc->documentElement->appendChild($rSig);
         }
-        foreach(array_slice($emptyPs,1)as$p)$body->removeChild($p);
+        if($relsDoc){
+            $zip->addFromString('word/_rels/document.xml.rels',$relsDoc->saveXML());
+            $typesXml=$zip->getFromName('[Content_Types].xml');
+            if(!str_contains($typesXml,'Extension="png"')){
+                $typesXml=str_replace('</Types>','<Default Extension="png" ContentType="image/png"/></Types>',$typesXml);
+                $zip->addFromString('[Content_Types].xml',$typesXml);
+            }
+        }
         $updated=$doc->saveXML();if(str_contains($updated,'{{'))throw new RuntimeException('Unresolved template placeholders.');
         if(!$zip->addFromString('word/document.xml',$updated))throw new RuntimeException('Document write failed.');
     } finally {if(!$zip->close())throw new RuntimeException('Document archive could not be saved.');}

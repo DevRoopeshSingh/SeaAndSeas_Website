@@ -90,3 +90,62 @@ function app_validate_upload(array $file): string {
     }
     throw new InvalidArgumentException('Upload an authentic PDF, DOC or DOCX file matching its extension.');
 }
+function app_validate_photo(?array $file): ?string {
+    if (!$file || ($file['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_NO_FILE) return null;
+    if (($file['error'] ?? UPLOAD_ERR_OK) !== UPLOAD_ERR_OK || !is_uploaded_file($file['tmp_name'] ?? '')) {
+        throw new InvalidArgumentException('Upload a valid photograph file (maximum 5 MB).');
+    }
+    if (($file['size'] ?? 0) < 100 || $file['size'] > 5 * 1024 * 1024) {
+        throw new InvalidArgumentException('Photograph must be between 100 bytes and 5 MB.');
+    }
+    $mime = (new finfo(FILEINFO_MIME_TYPE))->file($file['tmp_name']);
+    if (!in_array($mime, ['image/jpeg', 'image/png', 'image/webp'], true)) {
+        throw new InvalidArgumentException('Photograph must be a valid JPEG, PNG or WebP image.');
+    }
+    $info = @getimagesize($file['tmp_name']);
+    if (!$info || $info[0] < 80 || $info[1] < 80) {
+        throw new InvalidArgumentException('Photograph image dimensions are too small (minimum 80x80 px).');
+    }
+    return match($info[2] ?? 0) {
+        IMAGETYPE_JPEG => 'jpg',
+        IMAGETYPE_PNG => 'png',
+        IMAGETYPE_WEBP => 'webp',
+        default => throw new InvalidArgumentException('Unsupported photo image format.')
+    };
+}
+function app_validate_signature(?string $dataUrl, ?array $file = null): ?string {
+    if ($dataUrl !== null && trim($dataUrl) !== '') {
+        $trimmed = trim($dataUrl);
+        if (!preg_match('/^data:image\/(png|jpeg|webp);base64,([A-Za-z0-9+\/=\s]+)$/D', $trimmed, $matches)) {
+            throw new InvalidArgumentException('Invalid signature format.');
+        }
+        $raw = base64_decode($matches[2], true);
+        if ($raw === false || strlen($raw) < 50) {
+            throw new InvalidArgumentException('Corrupted or empty signature data.');
+        }
+        if (strlen($raw) > 2 * 1024 * 1024) {
+            throw new InvalidArgumentException('Signature size exceeds 2 MB limit.');
+        }
+        $info = @getimagesizefromstring($raw);
+        if (!$info || $info[0] < 40 || $info[1] < 15) {
+            throw new InvalidArgumentException('Signature dimensions are too small.');
+        }
+        return $raw;
+    }
+    if ($file && ($file['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_OK && is_uploaded_file($file['tmp_name'] ?? '')) {
+        if (($file['size'] ?? 0) < 50 || $file['size'] > 2 * 1024 * 1024) {
+            throw new InvalidArgumentException('Signature file must be between 50 bytes and 2 MB.');
+        }
+        $mime = (new finfo(FILEINFO_MIME_TYPE))->file($file['tmp_name']);
+        if (!in_array($mime, ['image/jpeg', 'image/png', 'image/webp'], true)) {
+            throw new InvalidArgumentException('Signature must be a PNG, JPG or WebP image.');
+        }
+        $raw = file_get_contents($file['tmp_name']);
+        $info = @getimagesizefromstring($raw);
+        if (!$info || $info[0] < 40 || $info[1] < 15) {
+            throw new InvalidArgumentException('Signature dimensions are too small.');
+        }
+        return $raw;
+    }
+    return null;
+}

@@ -106,6 +106,31 @@ function app_rate(string $action, int $max, int $seconds): void {
     $s=$db->prepare('SELECT attempts FROM rate_limits WHERE bucket=?');$s->execute([$bucket]);
     if ((int)$s->fetchColumn()>$max) app_json(['success'=>false,'error'=>'Too many attempts. Please try again later.'],429);
 }
+function app_get_settings(): array {
+    $defaults=['enable_applicant_photo'=>false,'enable_applicant_signature'=>false];
+    try {
+        $db=app_db();
+        $db->exec('CREATE TABLE IF NOT EXISTS system_settings (key TEXT PRIMARY KEY, value TEXT NOT NULL, updated_at TEXT NOT NULL)');
+        $stmt=$db->query('SELECT key, value FROM system_settings');
+        $rows=$stmt->fetchAll(PDO::FETCH_KEY_PAIR);
+        if(isset($rows['enable_applicant_photo']))$defaults['enable_applicant_photo']=$rows['enable_applicant_photo']==='1';
+        if(isset($rows['enable_applicant_signature']))$defaults['enable_applicant_signature']=$rows['enable_applicant_signature']==='1';
+    }catch(Throwable){}
+    return $defaults;
+}
+function app_save_settings(array $settings): array {
+    $db=app_db();
+    $db->exec('CREATE TABLE IF NOT EXISTS system_settings (key TEXT PRIMARY KEY, value TEXT NOT NULL, updated_at TEXT NOT NULL)');
+    $now=gmdate('c');
+    $stmt=$db->prepare('INSERT INTO system_settings(key, value, updated_at) VALUES(?, ?, ?) ON CONFLICT(key) DO UPDATE SET value=excluded.value, updated_at=excluded.updated_at');
+    if(array_key_exists('enable_applicant_photo',$settings)){
+        $stmt->execute(['enable_applicant_photo',!empty($settings['enable_applicant_photo'])?'1':'0',$now]);
+    }
+    if(array_key_exists('enable_applicant_signature',$settings)){
+        $stmt->execute(['enable_applicant_signature',!empty($settings['enable_applicant_signature'])?'1':'0',$now]);
+    }
+    return app_get_settings();
+}
 function app_file(string $relative): string {
     if (!preg_match('~^files/[a-f0-9]{32}/(application\.docx|cv\.(pdf|doc|docx))$~D',$relative)) throw new RuntimeException('Invalid private file reference.');
     $path=app_root().'/'.$relative;
@@ -123,7 +148,11 @@ function app_stream(array $record, string $type): never {
             $data=json_decode($record['data_json'],true,512,JSON_THROW_ON_ERROR);
             if(is_array($data)){
                 require_once __DIR__.'/application_docx.php';
-                app_generate_docx($data,$record['ref_number'],$path);
+                $folder=dirname($path);
+                $pPhoto=null;
+                foreach(['photo.jpg','photo.jpeg','photo.png','photo.webp']as$pf)if(is_file($folder.'/'.$pf)){$pPhoto=$folder.'/'.$pf;break;}
+                $pSig=is_file($folder.'/signature.png')?$folder.'/signature.png':null;
+                app_generate_docx($data,$record['ref_number'],$path,$pPhoto,$pSig);
             }
         }catch(Throwable $e){
             error_log('DOCX streaming refresh fallback: '.$e->getMessage());
