@@ -597,9 +597,9 @@ try {
         $mail->addReplyTo($mailerConfig['reply_to'], 'Sea & Seas Crewing Desk');
     }
 
-    // Email Subject
-    $formTypeLabel = $isRps01A ? '[Form RPS 01-A Seafarer Intake]' : '[Seafarer Career Application]';
-    $mail->Subject = "{$formTypeLabel} {$rank} - {$fullName} ({$refNumber})";
+    // Email Subject with Rank prominently at the start
+    $formTypeTag = $isRps01A ? 'Form RPS 01-A' : 'Quick Apply';
+    $mail->Subject = "[{$rank}] {$fullName} - {$refNumber} ({$formTypeTag})";
 
     // Build Responsive HTML Email Body
     $htmlBody = '

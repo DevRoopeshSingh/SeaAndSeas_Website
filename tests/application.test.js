@@ -56,6 +56,11 @@ async function main(){
  const badFile=await submit(basic,crypto.randomUUID(),Buffer.from('not a pdf'));check('Spoofed CV rejected',()=>assert.equal(badFile.status,422));
  const badPhoto=await submit(basic,crypto.randomUUID(),cv,'Arjun_CV.pdf',{buffer:Buffer.from('not an image'),type:'text/plain',name:'fake.jpg'});
  check('Spoofed photo rejected',()=>assert.equal(badPhoto.status,422));
+ const widePhotoPath=path.join(output,'test-wide.jpg');
+ spawnSync('php',['-r',`$im=imagecreatetruecolor(400,100);imagefilledrectangle($im,0,0,400,100,imagecolorallocate($im,240,240,240));imagejpeg($im,'${widePhotoPath.replace(/'/g,"\\\\\\'")}');`]);
+ const wideBuf=fs.readFileSync(widePhotoPath);
+ const badRatioPhoto=await submit(basic,crypto.randomUUID(),cv,'Arjun_CV.pdf',{buffer:wideBuf,type:'image/jpeg',name:'banner.jpg'});
+ check('Invalid aspect ratio photo rejected',()=>assert.equal(badRatioPhoto.status,422));
  const badSig=await submit(basic,crypto.randomUUID(),cv,'Arjun_CV.pdf',null,'invalid-signature-data');
  check('Spoofed signature rejected',()=>assert.equal(badSig.status,422));
 

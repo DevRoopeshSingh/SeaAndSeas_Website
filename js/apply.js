@@ -1022,10 +1022,10 @@
         const dataUrl = e.target.result;
         const img = new Image();
         img.onload = async () => {
-          if (img.naturalWidth < 80 || img.naturalHeight < 80) {
+          if (img.naturalWidth < 160 || img.naturalHeight < 160) {
             photoVerified = false;
             photoInput.value = '';
-            setPhotoStatus('error', `Resolution too low (${img.naturalWidth}x${img.naturalHeight}px). Minimum 80x80px required.`, '⚠️');
+            setPhotoStatus('error', `Resolution too low (${img.naturalWidth}x${img.naturalHeight}px). Minimum 160x160px required for passport photo.`, '⚠️');
             return;
           }
 
@@ -1035,36 +1035,41 @@
           }
           if (photoPlaceholder) photoPlaceholder.style.display = 'none';
           if (photoScanOverlay) photoScanOverlay.style.display = 'flex';
-          setPhotoStatus('scanning', 'Scanning image with automated face detection...', '🔍');
+          setPhotoStatus('scanning', 'Analyzing passport photo against RPS 01-A compliance standards...', '🔍');
 
           try {
-            let result = { detected: false, count: 0, confidence: 0 };
-            if (typeof window !== 'undefined' && window.FaceDetectorEngine) {
-              result = await window.FaceDetectorEngine.detect(img);
-            } else {
-              result = { detected: true, count: 1, confidence: 80 };
+            if (typeof window === 'undefined' || !window.FaceDetectorEngine) {
+              photoVerified = false;
+              if (photoScanOverlay) photoScanOverlay.style.display = 'none';
+              setPhotoStatus('error', '⚠️ Face detection engine is initializing. Please wait a moment and try again.', '⏳');
+              return;
             }
+
+            const check = await window.FaceDetectorEngine.verifyPassportPhoto(img);
 
             if (photoScanOverlay) photoScanOverlay.style.display = 'none';
 
-            if (result.detected && result.count >= 1) {
+            if (check.verified) {
               photoVerified = true;
-              setPhotoStatus('success', `✓ Face Verified: ${result.count === 1 ? 'Human face clearly detected' : result.count + ' faces detected'} (Confidence: ${result.confidence}%)`, '✅');
+              setPhotoStatus('success', `✓ Passport Photo Verified: Human face clearly detected and properly framed (Confidence: ${check.confidence}%)`, '✅');
               if (removePhotoBtn) removePhotoBtn.style.display = 'inline-flex';
               if (photoBtnLabel) photoBtnLabel.textContent = 'Change Photo';
               scheduleAutosave();
             } else {
               photoVerified = false;
-              setPhotoStatus('error', '⚠️ No clear human face detected. Please ensure your face is front-facing, well-lit, and clearly visible.', '❌');
+              photoInput.value = ''; // Immediately clear invalid photo from form submission
+              setPhotoStatus('error', `⚠️ Rejected: ${check.error}`, '❌');
               if (removePhotoBtn) removePhotoBtn.style.display = 'inline-flex';
               if (photoBtnLabel) photoBtnLabel.textContent = 'Choose Different Photo';
             }
           } catch (detErr) {
             console.error('[Face Detection Error]', detErr);
             if (photoScanOverlay) photoScanOverlay.style.display = 'none';
-            photoVerified = true;
-            setPhotoStatus('success', '✓ Photo accepted (Identity verification scheduled at interview)', '✅');
+            photoVerified = false;
+            photoInput.value = '';
+            setPhotoStatus('error', '⚠️ Verification error: Could not confirm passport photo requirements. Please upload a clear portrait photo.', '❌');
             if (removePhotoBtn) removePhotoBtn.style.display = 'inline-flex';
+            if (photoBtnLabel) photoBtnLabel.textContent = 'Choose Different Photo';
           }
         };
         img.src = dataUrl;

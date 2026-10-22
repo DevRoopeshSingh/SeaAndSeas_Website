@@ -103,8 +103,15 @@ function app_validate_photo(?array $file): ?string {
         throw new InvalidArgumentException('Photograph must be a valid JPEG, PNG or WebP image.');
     }
     $info = @getimagesize($file['tmp_name']);
-    if (!$info || $info[0] < 80 || $info[1] < 80) {
-        throw new InvalidArgumentException('Photograph image dimensions are too small (minimum 80x80 px).');
+    if (!$info || $info[0] < 150 || $info[1] < 150) {
+        throw new InvalidArgumentException('Photograph image dimensions are too small (minimum 150x150 px).');
+    }
+    if ($info[0] > 4096 || $info[1] > 4096) {
+        throw new InvalidArgumentException('Photograph dimensions exceed maximum allowed limit (4096x4096 px).');
+    }
+    $ratio = $info[0] / $info[1];
+    if ($ratio < 0.65 || $ratio > 1.30) {
+        throw new InvalidArgumentException('Photograph must be in passport portrait or square ratio (approx 3.5:4.5 or 1:1). Document scans, flyers, and wide landscape photos are rejected.');
     }
     return match($info[2] ?? 0) {
         IMAGETYPE_JPEG => 'jpg',
